@@ -1,8 +1,17 @@
 import { TAXONOMY_CONFIG } from "../config/TaxonomyConfig.js";
+import { DomainError } from "./DomainError.js";
 import { calculateAgeInMonths } from "./AgeService.js";
 
+export function normalizeText(value) {
+  return String(value || "").trim();
+}
+
+export function normalizeUpperCode(value) {
+  return normalizeText(value).toUpperCase();
+}
+
 export function normalizeJenisSasaran(value) {
-  return String(value || "").trim().toUpperCase();
+  return normalizeUpperCode(value);
 }
 
 export function isJenisSasaranValid(value) {
@@ -13,15 +22,53 @@ export function isJenisSasaranValid(value) {
 export function assertJenisSasaranValid(value) {
   const normalized = normalizeJenisSasaran(value);
 
+  if (!normalized) {
+    throw new DomainError(
+      "JENIS_SASARAN_REQUIRED",
+      "jenis_sasaran wajib diisi.",
+      { value }
+    );
+  }
+
   if (normalized === "BADUTA") {
-    throw new Error("BADUTA_LEGACY_NOT_ALLOWED");
+    throw new DomainError(
+      "BADUTA_LEGACY_NOT_ALLOWED",
+      "BADUTA tidak boleh menjadi jenis_sasaran. Gunakan BALITA dan turunkan baduta_prioritas dari umur.",
+      { value }
+    );
   }
 
   if (!isJenisSasaranValid(normalized)) {
-    throw new Error(`JENIS_SASARAN_INVALID: ${value}`);
+    throw new DomainError(
+      "JENIS_SASARAN_INVALID",
+      `jenis_sasaran tidak valid: ${value}`,
+      {
+        value,
+        allowedValues: TAXONOMY_CONFIG.officialJenisSasaran,
+      }
+    );
   }
 
   return normalized;
+}
+
+export function assertBalitaAgeInRange(ageMonths) {
+  if (
+    ageMonths < TAXONOMY_CONFIG.balitaMinAgeMonths ||
+    ageMonths > TAXONOMY_CONFIG.balitaMaxAgeMonths
+  ) {
+    throw new DomainError(
+      "BALITA_AGE_OUT_OF_RANGE",
+      `Umur BALITA harus ${TAXONOMY_CONFIG.balitaMinAgeMonths}–${TAXONOMY_CONFIG.balitaMaxAgeMonths} bulan.`,
+      {
+        ageMonths,
+        min: TAXONOMY_CONFIG.balitaMinAgeMonths,
+        max: TAXONOMY_CONFIG.balitaMaxAgeMonths,
+      }
+    );
+  }
+
+  return ageMonths;
 }
 
 export function deriveIsBadutaPrioritas(jenisSasaran, dateOfBirthIso, anchorDateIso) {
@@ -32,6 +79,7 @@ export function deriveIsBadutaPrioritas(jenisSasaran, dateOfBirthIso, anchorDate
   }
 
   const ageMonths = calculateAgeInMonths(dateOfBirthIso, anchorDateIso);
+  assertBalitaAgeInRange(ageMonths);
 
   return (
     ageMonths >= TAXONOMY_CONFIG.badutaPriorityMinAgeMonths &&
@@ -47,14 +95,42 @@ export function deriveKelompokUmurBalita(jenisSasaran, dateOfBirthIso, anchorDat
   }
 
   const ageMonths = calculateAgeInMonths(dateOfBirthIso, anchorDateIso);
+  assertBalitaAgeInRange(ageMonths);
 
-  if (ageMonths >= 0 && ageMonths <= 23) {
-    return "BADUTA_0_23";
+  if (
+    ageMonths >= TAXONOMY_CONFIG.badutaPriorityMinAgeMonths &&
+    ageMonths <= TAXONOMY_CONFIG.badutaPriorityMaxAgeMonths
+  ) {
+    return TAXONOMY_CONFIG.kelompokUmurBalita.BADUTA_0_23;
   }
 
-  if (ageMonths >= 24 && ageMonths <= 59) {
-    return "BALITA_24_59";
+  return TAXONOMY_CONFIG.kelompokUmurBalita.BALITA_24_59;
+}
+
+export function deriveTaxonomyProfile(jenisSasaran, dateOfBirthIso, anchorDateIso) {
+  const normalized = assertJenisSasaranValid(jenisSasaran);
+  const isBalita = normalized === "BALITA";
+
+  if (!isBalita) {
+    return Object.freeze({
+      jenis_sasaran: normalized,
+      is_balita: false,
+      age_months_at_anchor: null,
+      kelompok_umur_balita: "",
+      is_baduta_prioritas: false,
+      anchor_date: anchorDateIso || "",
+    });
   }
 
-  throw new Error(`BALITA_AGE_OUT_OF_RANGE: ${ageMonths}`);
+  const ageMonths = calculateAgeInMonths(dateOfBirthIso, anchorDateIso);
+  assertBalitaAgeInRange(ageMonths);
+
+  return Object.freeze({
+    jenis_sasaran: normalized,
+    is_balita: true,
+    age_months_at_anchor: ageMonths,
+    kelompok_umur_balita: deriveKelompokUmurBalita(normalized, dateOfBirthIso, anchorDateIso),
+    is_baduta_prioritas: deriveIsBadutaPrioritas(normalized, dateOfBirthIso, anchorDateIso),
+    anchor_date: anchorDateIso,
+  });
 }

@@ -11,3 +11,7 @@ Export wajib membawa:
 - selected_record_keys
 - checksum_sha256
 - taxonomy_version
+
+Catatan CB-1:
+
+Import/export belum diimplementasikan. Kontrak ini dipertahankan sebagai pagar untuk paket CB-4.

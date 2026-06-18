@@ -1,6 +1,6 @@
 # 04 — Validation Contract
 
-Validasi minimum:
+Validasi minimum yang akan dikunci pada CB-2:
 
 - BADUTA ditolak sebagai `jenis_sasaran`
 - jenis_sasaran wajib salah satu dari CATIN, BUMIL, BUFAS, BALITA
@@ -11,3 +11,6 @@ Validasi minimum:
 - BALITA wajib punya tanggal_lahir valid
 - BALITA usia 0–23 bulan adalah baduta_prioritas
 - BALITA usia 24–59 bulan bukan baduta_prioritas
+- parent sasaran wajib ditemukan sebelum pendampingan dipromote
+
+CB-1 baru mengunci taxonomy, age engine, dan domain model.

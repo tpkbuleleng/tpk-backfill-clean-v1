@@ -1,17 +1,16 @@
+import { DomainError } from "./DomainError.js";
+import { parseIsoLocalDate } from "./DateService.js";
+
 export function calculateAgeInMonths(dateOfBirthIso, anchorDateIso) {
-  if (!dateOfBirthIso || !anchorDateIso) {
-    throw new Error("Tanggal lahir dan anchor date wajib diisi.");
-  }
-
-  const dob = new Date(`${dateOfBirthIso}T00:00:00`);
-  const anchor = new Date(`${anchorDateIso}T00:00:00`);
-
-  if (Number.isNaN(dob.getTime()) || Number.isNaN(anchor.getTime())) {
-    throw new Error("Format tanggal tidak valid. Gunakan YYYY-MM-DD.");
-  }
+  const dob = parseIsoLocalDate(dateOfBirthIso, "tanggal_lahir");
+  const anchor = parseIsoLocalDate(anchorDateIso, "anchor_date");
 
   if (dob > anchor) {
-    throw new Error("Tanggal lahir tidak boleh lebih baru dari anchor date.");
+    throw new DomainError(
+      "DATE_OF_BIRTH_AFTER_ANCHOR",
+      "Tanggal lahir tidak boleh lebih baru dari anchor date.",
+      { dateOfBirthIso, anchorDateIso }
+    );
   }
 
   let months = (anchor.getFullYear() - dob.getFullYear()) * 12;
@@ -22,4 +21,9 @@ export function calculateAgeInMonths(dateOfBirthIso, anchorDateIso) {
   }
 
   return months;
+}
+
+export function calculateAgeInYears(dateOfBirthIso, anchorDateIso) {
+  const months = calculateAgeInMonths(dateOfBirthIso, anchorDateIso);
+  return Math.floor(months / 12);
 }

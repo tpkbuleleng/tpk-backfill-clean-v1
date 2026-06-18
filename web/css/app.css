@@ -7,6 +7,8 @@
   --ok: #0f7b3f;
   --bad: #b42318;
   --warn: #a15c07;
+  --code-bg: #101828;
+  --code-text: #e6edf7;
 }
 
 * {
@@ -51,7 +53,7 @@ h2 {
 }
 
 .lead {
-  max-width: 760px;
+  max-width: 800px;
   margin: 16px 0 0;
   color: var(--muted);
   font-size: 17px;
@@ -67,7 +69,8 @@ h2 {
   box-shadow: 0 10px 30px rgba(23, 32, 51, 0.06);
 }
 
-.status-grid {
+.status-grid,
+.test-output {
   display: grid;
   gap: 10px;
 }
@@ -76,10 +79,16 @@ h2 {
 .test-row {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 16px;
   padding: 12px 14px;
   border: 1px solid var(--border);
   border-radius: 12px;
+}
+
+.status-row span,
+.test-row span {
+  text-align: right;
 }
 
 .badge {
@@ -106,11 +115,30 @@ h2 {
   background: rgba(161, 92, 7, 0.08);
 }
 
-.test-output {
-  display: grid;
-  gap: 8px;
-}
-
 .muted {
   color: var(--muted);
+}
+
+.code-block {
+  overflow: auto;
+  margin: 12px 0 0;
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--code-bg);
+  color: var(--code-text);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+@media (max-width: 640px) {
+  .status-row,
+  .test-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .status-row span,
+  .test-row span {
+    text-align: left;
+  }
 }
