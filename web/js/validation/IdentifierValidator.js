@@ -14,24 +14,15 @@ export function validateNik16(result, raw, field = "nik") {
   const value = normalizeDigits(raw?.[field]);
 
   if (!value) {
-    addValidationError(
-      result,
-      "NIK_REQUIRED",
-      field,
-      "NIK wajib diisi.",
-      { field }
-    );
+    addValidationError(result, "NIK_REQUIRED", field, "NIK wajib diisi.", { field });
     return result;
   }
 
   if (!isSixteenDigits(value)) {
-    addValidationError(
-      result,
-      "NIK_16_DIGIT_REQUIRED",
+    addValidationError(result, "NIK_16_DIGIT_REQUIRED", field, "NIK wajib 16 digit angka.", {
       field,
-      "NIK wajib 16 digit angka.",
-      { field, valueLength: value.length }
-    );
+      valueLength: value.length,
+    });
   }
 
   return result;
@@ -41,24 +32,15 @@ export function validateKk16(result, raw, field = "no_kk") {
   const value = normalizeDigits(raw?.[field]);
 
   if (!value) {
-    addValidationError(
-      result,
-      "KK_REQUIRED",
-      field,
-      "Nomor KK wajib diisi.",
-      { field }
-    );
+    addValidationError(result, "KK_REQUIRED", field, "Nomor KK wajib diisi.", { field });
     return result;
   }
 
   if (!isSixteenDigits(value)) {
-    addValidationError(
-      result,
-      "KK_16_DIGIT_REQUIRED",
+    addValidationError(result, "KK_16_DIGIT_REQUIRED", field, "Nomor KK wajib 16 digit angka.", {
       field,
-      "Nomor KK wajib 16 digit angka.",
-      { field, valueLength: value.length }
-    );
+      valueLength: value.length,
+    });
   }
 
   return result;

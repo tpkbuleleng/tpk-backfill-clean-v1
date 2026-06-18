@@ -1,16 +1,11 @@
 import { APP_CONFIG } from "./config/AppConfig.js";
 import { TAXONOMY_CONFIG } from "./config/TaxonomyConfig.js";
 import { SCOPE_CONFIG } from "./config/ScopeConfig.js";
+import { SHEET_CONFIG } from "./config/SheetConfig.js";
 import { runContractTests } from "./test/TestRunner.js";
-import {
-  SAMPLE_SASARAN_RAW,
-  SAMPLE_PENDAMPINGAN_RAW,
-  SAMPLE_INVALID_SASARAN_RAW,
-  SAMPLE_INVALID_PENDAMPINGAN_RAW,
-  SAMPLE_PARENT_REGISTRY,
-} from "./sample/SampleData.js";
-import { validateSasaran } from "./validation/SasaranValidator.js";
-import { validatePendampingan } from "./validation/PendampinganValidator.js";
+import { SAMPLE_SASARAN_RAW, SAMPLE_PENDAMPINGAN_RAW } from "./sample/SampleData.js";
+import { MockSheetProvider } from "./provider/MockSheetProvider.js";
+import { StagingWriterService } from "./service/StagingWriterService.js";
 
 function escapeHtml(value) {
   return String(value)
@@ -31,12 +26,14 @@ function renderStatus() {
     ["Backend Mode", APP_CONFIG.backendMode],
     ["Domain Version", APP_CONFIG.domainVersion],
     ["Validation Version", APP_CONFIG.validationVersion],
+    ["Provider Version", APP_CONFIG.providerVersion],
     ["Taxonomy Version", TAXONOMY_CONFIG.taxonomyVersion],
     ["Official Jenis Sasaran", TAXONOMY_CONFIG.officialJenisSasaran.join(", ")],
     ["Legacy BADUTA Allowed", TAXONOMY_CONFIG.allowLegacyBaduta ? "YA" : "TIDAK"],
     ["Baduta Priority Age", `${TAXONOMY_CONFIG.badutaPriorityMinAgeMonths}–${TAXONOMY_CONFIG.badutaPriorityMaxAgeMonths} bulan`],
     ["Balita Age Range", `${TAXONOMY_CONFIG.balitaMinAgeMonths}–${TAXONOMY_CONFIG.balitaMaxAgeMonths} bulan`],
     ["Scope Registry Mode", SCOPE_CONFIG.registryMode],
+    ["Sheet Provider Mode", SHEET_CONFIG.providerMode],
   ];
 
   el.innerHTML = rows.map(([label, value]) => `
@@ -70,34 +67,22 @@ function renderTests() {
 }
 
 function renderSamples() {
-  const sasaranEl = document.querySelector("#sasaran-validation-sample");
-  const pendampinganEl = document.querySelector("#pendampingan-validation-sample");
-  const invalidEl = document.querySelector("#invalid-validation-sample");
+  const stagingEl = document.querySelector("#staging-sample");
+  const snapshotEl = document.querySelector("#provider-snapshot");
 
-  const sasaranValidation = validateSasaran(SAMPLE_SASARAN_RAW, {
+  const provider = new MockSheetProvider();
+  const writer = new StagingWriterService(provider);
+
+  const writeSasaran = writer.writeSasaran(SAMPLE_SASARAN_RAW, {
     anchorDate: "2026-06-18",
   });
 
-  const pendampinganValidation = validatePendampingan(SAMPLE_PENDAMPINGAN_RAW, {
+  const writePendampingan = writer.writePendampingan(SAMPLE_PENDAMPINGAN_RAW, {
     currentDate: "2026-06-18",
-    parentSasaranKeys: SAMPLE_PARENT_REGISTRY,
   });
 
-  const invalidSasaranValidation = validateSasaran(SAMPLE_INVALID_SASARAN_RAW, {
-    anchorDate: "2026-06-18",
-  });
-
-  const invalidPendampinganValidation = validatePendampingan(SAMPLE_INVALID_PENDAMPINGAN_RAW, {
-    currentDate: "2026-06-18",
-    parentSasaranKeys: SAMPLE_PARENT_REGISTRY,
-  });
-
-  sasaranEl.textContent = JSON.stringify(sasaranValidation, null, 2);
-  pendampinganEl.textContent = JSON.stringify(pendampinganValidation, null, 2);
-  invalidEl.textContent = JSON.stringify({
-    invalid_sasaran: invalidSasaranValidation,
-    invalid_pendampingan: invalidPendampinganValidation,
-  }, null, 2);
+  stagingEl.textContent = JSON.stringify({ writeSasaran, writePendampingan }, null, 2);
+  snapshotEl.textContent = JSON.stringify(writer.getSnapshot(), null, 2);
 }
 
 try {

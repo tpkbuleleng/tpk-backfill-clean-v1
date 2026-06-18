@@ -3,57 +3,45 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>TPK Backfill Clean v1 — CB-2</title>
-  <meta name="description" content="TPK Backfill Clean Build v1 — CB-2 Shared Validation Layer" />
+  <title>TPK Backfill Clean v1 — CB-3</title>
+  <meta name="description" content="TPK Backfill Clean Build v1 — CB-3 Sheet Provider & Staging Writer" />
   <link rel="stylesheet" href="./web/css/app.css" />
 </head>
 <body>
   <main class="shell">
     <section class="hero">
       <p class="eyebrow">TPK Backfill Clean Build</p>
-      <h1>CB-2 Shared Validation Layer</h1>
+      <h1>CB-3 Sheet Provider & Staging Writer</h1>
       <p class="lead">
-        Halaman ini menjalankan health-check kontrak taxonomy, age engine, domain model,
-        dan shared validation layer. Backend belum dihubungkan.
+        Halaman ini menjalankan health-check domain, validation layer, dan mock sheet provider.
+        Backend GAS belum dihubungkan ke GitHub Pages.
       </p>
     </section>
 
     <section class="card">
       <h2>Status Aplikasi</h2>
-      <div id="app-status" class="status-grid" aria-live="polite">
-        Memuat health-check...
-      </div>
+      <div id="app-status" class="status-grid" aria-live="polite">Memuat health-check...</div>
     </section>
 
     <section class="card">
-      <h2>Regression Test CB-2</h2>
-      <div id="test-output" class="test-output" aria-live="polite">
-        Menjalankan test...
-      </div>
+      <h2>Regression Test CB-3</h2>
+      <div id="test-output" class="test-output" aria-live="polite">Menjalankan test...</div>
     </section>
 
     <section class="card">
-      <h2>Sample Sasaran Validation</h2>
+      <h2>Sample Staging Writer</h2>
       <p class="muted">
-        Contoh validasi sasaran BALITA usia 23 bulan dengan NIK/KK valid dan scope valid.
+        Contoh penulisan sasaran dan pendampingan ke mock staging setelah lulus validasi.
       </p>
-      <pre id="sasaran-validation-sample" class="code-block">Memuat sample...</pre>
+      <pre id="staging-sample" class="code-block">Memuat sample...</pre>
     </section>
 
     <section class="card">
-      <h2>Sample Pendampingan Validation</h2>
+      <h2>Sample Provider Snapshot</h2>
       <p class="muted">
-        Contoh validasi pendampingan dengan parent sasaran tersedia.
+        Snapshot staging mock: sasaran, pendampingan, dan audit log.
       </p>
-      <pre id="pendampingan-validation-sample" class="code-block">Memuat sample...</pre>
-    </section>
-
-    <section class="card">
-      <h2>Sample Invalid Rows</h2>
-      <p class="muted">
-        Contoh error terstruktur untuk baris tidak valid.
-      </p>
-      <pre id="invalid-validation-sample" class="code-block">Memuat sample...</pre>
+      <pre id="provider-snapshot" class="code-block">Memuat snapshot...</pre>
     </section>
   </main>
 

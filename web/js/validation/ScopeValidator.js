@@ -18,46 +18,22 @@ export function validateScope(result, raw) {
   const idTim = normalizeIdTim(raw?.id_tim);
 
   if (!kodeKecamatan) {
-    addValidationError(
-      result,
-      "KODE_KECAMATAN_REQUIRED",
-      "kode_kecamatan",
-      "kode_kecamatan wajib diisi.",
-      {}
-    );
+    addValidationError(result, "KODE_KECAMATAN_REQUIRED", "kode_kecamatan", "kode_kecamatan wajib diisi.", {});
     return result;
   }
 
   if (!idTim) {
-    addValidationError(
-      result,
-      "ID_TIM_REQUIRED",
-      "id_tim",
-      "id_tim wajib diisi.",
-      {}
-    );
+    addValidationError(result, "ID_TIM_REQUIRED", "id_tim", "id_tim wajib diisi.", {});
     return result;
   }
 
   if (!isOfficialKecamatan(kodeKecamatan)) {
-    addValidationError(
-      result,
-      "KODE_KECAMATAN_INVALID",
-      "kode_kecamatan",
-      "kode_kecamatan tidak terdaftar pada registry CB-2.",
-      { kode_kecamatan: kodeKecamatan }
-    );
+    addValidationError(result, "KODE_KECAMATAN_INVALID", "kode_kecamatan", "kode_kecamatan tidak terdaftar pada registry CB-3.", { kode_kecamatan: kodeKecamatan });
     return result;
   }
 
   if (!isRegisteredTim(kodeKecamatan, idTim)) {
-    addValidationError(
-      result,
-      "SCOPE_TIM_NOT_REGISTERED",
-      "id_tim",
-      "id_tim tidak terdaftar pada kode_kecamatan tersebut.",
-      { kode_kecamatan: kodeKecamatan, id_tim: idTim }
-    );
+    addValidationError(result, "SCOPE_TIM_NOT_REGISTERED", "id_tim", "id_tim tidak terdaftar pada kode_kecamatan tersebut.", { kode_kecamatan: kodeKecamatan, id_tim: idTim });
   }
 
   return result;

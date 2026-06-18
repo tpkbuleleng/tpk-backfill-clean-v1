@@ -16,23 +16,13 @@ export function createValidationResult(context = {}) {
 
 export function addValidationError(result, code, field, message, details = {}) {
   result.ok = false;
-  result.errors.push({
-    code,
-    field,
-    message,
-    details,
-  });
+  result.errors.push({ code, field, message, details });
   result.error_count = result.errors.length;
   return result;
 }
 
 export function addValidationWarning(result, code, field, message, details = {}) {
-  result.warnings.push({
-    code,
-    field,
-    message,
-    details,
-  });
+  result.warnings.push({ code, field, message, details });
   result.warning_count = result.warnings.length;
   return result;
 }
@@ -61,13 +51,7 @@ export function requireField(result, raw, field, label = field) {
   const value = raw?.[field];
 
   if (value === undefined || value === null || String(value).trim() === "") {
-    addValidationError(
-      result,
-      "FIELD_REQUIRED",
-      field,
-      `${label} wajib diisi.`,
-      { field }
-    );
+    addValidationError(result, "FIELD_REQUIRED", field, `${label} wajib diisi.`, { field });
   }
 
   return result;

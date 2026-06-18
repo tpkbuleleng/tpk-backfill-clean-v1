@@ -4,14 +4,15 @@ Clean rebuild untuk TPK Backfill berdasarkan kontrak final yang sudah dikunci.
 
 ## Status
 
-Paket aktif: **CB-2 — Shared Validation Layer**
+Paket aktif: **CB-3 — Sheet Provider & Staging Writer**
 
 Mode uji:
 
-- GitHub Pages static validation health-check
+- GitHub Pages static provider health-check
 - Domain model test berbasis browser
 - Shared validation test berbasis browser
-- Backend aktif: belum dihubungkan, masih `CONTRACT_CHECK`
+- Mock Sheet Provider test berbasis browser
+- Backend GAS disiapkan, tetapi belum dihubungkan ke GitHub Pages
 
 ## GitHub Pages
 
@@ -26,16 +27,14 @@ Entry point:
 
 ## Kontrak Utama
 
-- BADUTA bukan `jenis_sasaran` resmi.
-- BALITA adalah `jenis_sasaran` resmi.
-- BADUTA adalah derived priority untuk BALITA usia 0–23 bulan.
-- NIK wajib 16 digit.
-- KK wajib 16 digit.
-- tanggal_lahir tidak boleh masa depan terhadap anchor validasi.
-- tanggal_pendampingan tidak boleh masa depan terhadap tanggal sistem validasi.
-- Scope wajib valid.
-- Pendampingan wajib punya parent sasaran.
-- Validator menghasilkan error terstruktur, bukan sekadar throw mentah.
+- Data masuk staging hanya setelah lulus Shared Validation Layer.
+- Provider tidak menyimpan logika taxonomy.
+- Provider tidak menyimpan logika validasi bisnis.
+- Staging Writer bertugas orkestrasi: validate → provider write → result.
+- Duplicate `sasaran_unique_key` ditolak.
+- Pendampingan wajib punya parent sasaran di staging.
+- CB-3 menggunakan Mock Sheet Provider untuk uji online.
+- GAS Sheet Provider disiapkan untuk paket backend berikutnya.
 
 ## Paket
 
@@ -43,5 +42,5 @@ Entry point:
 CB-0 — Foundation & Contract Freeze
 CB-1 — Taxonomy, Age Engine & Domain Model
 CB-2 — Shared Validation Layer
+CB-3 — Sheet Provider & Staging Writer
 ```
-

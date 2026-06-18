@@ -30,9 +30,6 @@ export function buildScopeDomain(raw = {}) {
   return Object.freeze({
     kode_kecamatan: kodeKecamatan,
     id_tim: idTim,
-    scope_key: buildScopeKey({
-      kode_kecamatan: kodeKecamatan,
-      id_tim: idTim,
-    }),
+    scope_key: buildScopeKey({ kode_kecamatan: kodeKecamatan, id_tim: idTim }),
   });
 }

@@ -10,35 +10,26 @@ Clean codebase, frozen domain contract.
 
 ## Paket aktif
 
-CB-2 — Shared Validation Layer
+CB-3 — Sheet Provider & Staging Writer
 
-## Batas Paket CB-2
+## Batas Paket CB-3
 
-CB-2 menangani:
+CB-3 menangani:
 
-- validasi NIK 16 digit
-- validasi KK 16 digit
-- validasi tanggal tidak masa depan
-- validasi taxonomy
-- validasi scope statis sementara
-- validasi parent sasaran untuk pendampingan
-- output error terstruktur
+- Provider interface mock berbasis browser
+- Staging writer orchestration
+- Write sasaran valid ke staging
+- Write pendampingan valid ke staging
+- Duplicate guard sasaran
+- Duplicate guard pendampingan
+- Parent sasaran guard untuk pendampingan
+- Audit log mock
 
-CB-2 belum menangani:
+CB-3 belum menangani:
 
-- baca/tulis Google Sheet
+- koneksi GitHub Pages ke Apps Script endpoint
+- deploy Web App GAS
+- baca/tulis Google Sheet sungguhan dari browser
 - CSV export
 - Supabase import
 - Auth/RLS
-- UI form produksi
-- registry scope penuh dari master_tim/master_wilayah
-
-## Keputusan
-
-Scope registry pada CB-2 masih statis untuk test:
-
-```txt
-TJK → TIM_TJK_001
-```
-
-Registry penuh akan masuk pada paket provider/master reference berikutnya.

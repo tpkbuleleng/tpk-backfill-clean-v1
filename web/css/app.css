@@ -11,9 +11,7 @@
   --code-text: #e6edf7;
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
@@ -28,9 +26,7 @@ body {
   padding: 40px 0;
 }
 
-.hero {
-  margin-bottom: 24px;
-}
+.hero { margin-bottom: 24px; }
 
 .eyebrow {
   margin: 0 0 8px;
@@ -53,7 +49,7 @@ h2 {
 }
 
 .lead {
-  max-width: 840px;
+  max-width: 860px;
   margin: 16px 0 0;
   color: var(--muted);
   font-size: 17px;
@@ -115,9 +111,7 @@ h2 {
   background: rgba(161, 92, 7, 0.08);
 }
 
-.muted {
-  color: var(--muted);
-}
+.muted { color: var(--muted); }
 
 .code-block {
   overflow: auto;

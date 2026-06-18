@@ -8,10 +8,7 @@ import { todayIsoLocal } from "../domain/DateService.js";
 
 export function validatePendampingan(raw = {}, options = {}) {
   const currentDate = options.currentDate || todayIsoLocal();
-  const result = createValidationResult({
-    validator: "PendampinganValidator",
-    currentDate,
-  });
+  const result = createValidationResult({ validator: "PendampinganValidator", currentDate });
 
   requireField(result, raw, "sasaran_unique_key", "sasaran_unique_key");
   requireField(result, raw, "id_sasaran", "id_sasaran");
@@ -38,8 +35,7 @@ export function validatePendampingan(raw = {}, options = {}) {
   }
 
   try {
-    const domain = buildPendampinganDomain(raw);
-    return finalizeValidationResult(result, domain);
+    return finalizeValidationResult(result, buildPendampinganDomain(raw));
   } catch (error) {
     addDomainError(result, error, "tanggal_pendampingan");
     return finalizeValidationResult(result);

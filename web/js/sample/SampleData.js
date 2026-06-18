@@ -9,7 +9,7 @@ export const SAMPLE_SASARAN_RAW = Object.freeze({
   no_kk: "5108010101888888",
   tanggal_lahir: "2024-07-18",
   tanggal_registrasi: "2026-06-18",
-  source: "SAMPLE_CB2",
+  source: "SAMPLE_CB3",
 });
 
 export const SAMPLE_PARENT_REGISTRY = Object.freeze([
@@ -26,7 +26,7 @@ export const SAMPLE_PENDAMPINGAN_RAW = Object.freeze({
   tanggal_lahir: "2024-06-18",
   tanggal_pendampingan: "2026-06-18",
   status_pendampingan: "KUNJUNGAN_RUMAH",
-  source: "SAMPLE_CB2",
+  source: "SAMPLE_CB3",
 });
 
 export const SAMPLE_INVALID_SASARAN_RAW = Object.freeze({
@@ -39,7 +39,7 @@ export const SAMPLE_INVALID_SASARAN_RAW = Object.freeze({
   no_kk: "ABC",
   tanggal_lahir: "2026-06-19",
   tanggal_registrasi: "2026-06-18",
-  source: "SAMPLE_INVALID_CB2",
+  source: "SAMPLE_INVALID_CB3",
 });
 
 export const SAMPLE_INVALID_PENDAMPINGAN_RAW = Object.freeze({
@@ -52,5 +52,5 @@ export const SAMPLE_INVALID_PENDAMPINGAN_RAW = Object.freeze({
   tanggal_lahir: "2024-01-01",
   tanggal_pendampingan: "2026-06-19",
   status_pendampingan: "",
-  source: "SAMPLE_INVALID_CB2",
+  source: "SAMPLE_INVALID_CB3",
 });

@@ -24,6 +24,5 @@ export function calculateAgeInMonths(dateOfBirthIso, anchorDateIso) {
 }
 
 export function calculateAgeInYears(dateOfBirthIso, anchorDateIso) {
-  const months = calculateAgeInMonths(dateOfBirthIso, anchorDateIso);
-  return Math.floor(months / 12);
+  return Math.floor(calculateAgeInMonths(dateOfBirthIso, anchorDateIso) / 12);
 }

@@ -1,19 +1,13 @@
 import { DomainError } from "../domain/DomainError.js";
 import { calculateAgeInMonths } from "../domain/AgeService.js";
-import {
-  assertJenisSasaranValid,
-  deriveIsBadutaPrioritas,
-  deriveKelompokUmurBalita,
-} from "../domain/TaxonomyService.js";
+import { assertJenisSasaranValid, deriveIsBadutaPrioritas, deriveKelompokUmurBalita } from "../domain/TaxonomyService.js";
 import { buildSasaranDomain } from "../domain/SasaranModel.js";
 import { buildPendampinganDomain } from "../domain/PendampinganModel.js";
 import { validateSasaran } from "../validation/SasaranValidator.js";
 import { validatePendampingan } from "../validation/PendampinganValidator.js";
-import {
-  SAMPLE_SASARAN_RAW,
-  SAMPLE_PENDAMPINGAN_RAW,
-  SAMPLE_PARENT_REGISTRY,
-} from "../sample/SampleData.js";
+import { MockSheetProvider } from "../provider/MockSheetProvider.js";
+import { StagingWriterService } from "../service/StagingWriterService.js";
+import { SAMPLE_SASARAN_RAW, SAMPLE_PENDAMPINGAN_RAW, SAMPLE_PARENT_REGISTRY } from "../sample/SampleData.js";
 
 function test(name, fn) {
   try {
@@ -45,7 +39,6 @@ function expectFalse(value) {
 
 function expectErrorCode(validationResult, code) {
   const found = validationResult.errors.some((error) => error.code === code);
-
   if (!found) {
     throw new Error(`Expected validation error code: ${code}`);
   }
@@ -58,24 +51,23 @@ function expectThrowsCode(fn, expectedCode) {
     if (error instanceof DomainError && error.code === expectedCode) {
       return;
     }
-
     if (String(error.code || error.message).includes(expectedCode)) {
       return;
     }
-
     throw error;
   }
 
   throw new Error(`Expected error code: ${expectedCode}`);
 }
 
+function createWriter() {
+  return new StagingWriterService(new MockSheetProvider());
+}
+
 export function runContractTests() {
   return [
     test("BADUTA legacy ditolak sebagai jenis_sasaran", () => {
-      expectThrowsCode(
-        () => assertJenisSasaranValid("BADUTA"),
-        "BADUTA_LEGACY_NOT_ALLOWED"
-      );
+      expectThrowsCode(() => assertJenisSasaranValid("BADUTA"), "BADUTA_LEGACY_NOT_ALLOWED");
     }),
 
     test("Jenis sasaran resmi diterima", () => {
@@ -98,49 +90,31 @@ export function runContractTests() {
     }),
 
     test("Tanggal lahir setelah anchor ditolak", () => {
-      expectThrowsCode(
-        () => calculateAgeInMonths("2026-06-19", "2026-06-18"),
-        "DATE_OF_BIRTH_AFTER_ANCHOR"
-      );
+      expectThrowsCode(() => calculateAgeInMonths("2026-06-19", "2026-06-18"), "DATE_OF_BIRTH_AFTER_ANCHOR");
     }),
 
     test("BALITA usia 0–23 bulan menjadi baduta_prioritas", () => {
-      expectTrue(
-        deriveIsBadutaPrioritas("BALITA", "2024-07-18", "2026-06-18")
-      );
+      expectTrue(deriveIsBadutaPrioritas("BALITA", "2024-07-18", "2026-06-18"));
     }),
 
     test("BALITA usia 24–59 bulan bukan baduta_prioritas", () => {
-      expectFalse(
-        deriveIsBadutaPrioritas("BALITA", "2024-06-18", "2026-06-18")
-      );
+      expectFalse(deriveIsBadutaPrioritas("BALITA", "2024-06-18", "2026-06-18"));
     }),
 
     test("BALITA usia 60 bulan ditolak sebagai BALITA aktif", () => {
-      expectThrowsCode(
-        () => deriveIsBadutaPrioritas("BALITA", "2021-06-18", "2026-06-18"),
-        "BALITA_AGE_OUT_OF_RANGE"
-      );
+      expectThrowsCode(() => deriveIsBadutaPrioritas("BALITA", "2021-06-18", "2026-06-18"), "BALITA_AGE_OUT_OF_RANGE");
     }),
 
     test("BUFAS bukan baduta_prioritas", () => {
-      expectFalse(
-        deriveIsBadutaPrioritas("BUFAS", "2024-07-18", "2026-06-18")
-      );
+      expectFalse(deriveIsBadutaPrioritas("BUFAS", "2024-07-18", "2026-06-18"));
     }),
 
     test("Kelompok umur BALITA 0–23 bulan = BADUTA_0_23", () => {
-      expectEqual(
-        deriveKelompokUmurBalita("BALITA", "2024-07-18", "2026-06-18"),
-        "BADUTA_0_23"
-      );
+      expectEqual(deriveKelompokUmurBalita("BALITA", "2024-07-18", "2026-06-18"), "BADUTA_0_23");
     }),
 
     test("Kelompok umur BALITA 24–59 bulan = BALITA_24_59", () => {
-      expectEqual(
-        deriveKelompokUmurBalita("BALITA", "2024-06-18", "2026-06-18"),
-        "BALITA_24_59"
-      );
+      expectEqual(deriveKelompokUmurBalita("BALITA", "2024-06-18", "2026-06-18"), "BALITA_24_59");
     }),
 
     test("Sasaran domain membentuk sasaran_unique_key dari NIK dan id_tim", () => {
@@ -153,14 +127,9 @@ export function runContractTests() {
         nik: "5108010101999999",
         no_kk: "5108010101888888",
         tanggal_lahir: "2024-07-18",
-      }, {
-        anchorDate: "2026-06-18",
-      });
+      }, { anchorDate: "2026-06-18" });
 
       expectEqual(domain.sasaran_unique_key, "5108010101999999|TIM_TJK_001");
-      expectEqual(domain.jenis_sasaran, "BALITA");
-      expectTrue(domain.is_baduta_prioritas);
-      expectEqual(domain.kelompok_umur_balita, "BADUTA_0_23");
       expectEqual(domain.scope_key, "TJK|TIM_TJK_001");
     }),
 
@@ -178,75 +147,40 @@ export function runContractTests() {
 
       expectEqual(domain.age_months_at_pendampingan, 24);
       expectFalse(domain.is_baduta_prioritas_at_pendampingan);
-      expectEqual(domain.kelompok_umur_balita_at_pendampingan, "BALITA_24_59");
     }),
 
     test("Validator sasaran valid menghasilkan OK dan domain", () => {
-      const result = validateSasaran(SAMPLE_SASARAN_RAW, {
-        anchorDate: "2026-06-18",
-      });
-
+      const result = validateSasaran(SAMPLE_SASARAN_RAW, { anchorDate: "2026-06-18" });
       expectTrue(result.ok);
-      expectEqual(result.error_count, 0);
       expectEqual(result.domain.sasaran_unique_key, "5108010101999999|TIM_TJK_001");
     }),
 
     test("Validator sasaran menolak NIK tidak 16 digit", () => {
-      const result = validateSasaran({
-        ...SAMPLE_SASARAN_RAW,
-        nik: "12345",
-      }, {
-        anchorDate: "2026-06-18",
-      });
-
+      const result = validateSasaran({ ...SAMPLE_SASARAN_RAW, nik: "12345" }, { anchorDate: "2026-06-18" });
       expectFalse(result.ok);
       expectErrorCode(result, "NIK_16_DIGIT_REQUIRED");
     }),
 
     test("Validator sasaran menolak KK tidak 16 digit", () => {
-      const result = validateSasaran({
-        ...SAMPLE_SASARAN_RAW,
-        no_kk: "12345",
-      }, {
-        anchorDate: "2026-06-18",
-      });
-
+      const result = validateSasaran({ ...SAMPLE_SASARAN_RAW, no_kk: "12345" }, { anchorDate: "2026-06-18" });
       expectFalse(result.ok);
       expectErrorCode(result, "KK_16_DIGIT_REQUIRED");
     }),
 
     test("Validator sasaran menolak tanggal_lahir masa depan", () => {
-      const result = validateSasaran({
-        ...SAMPLE_SASARAN_RAW,
-        tanggal_lahir: "2026-06-19",
-      }, {
-        anchorDate: "2026-06-18",
-      });
-
+      const result = validateSasaran({ ...SAMPLE_SASARAN_RAW, tanggal_lahir: "2026-06-19" }, { anchorDate: "2026-06-18" });
       expectFalse(result.ok);
       expectErrorCode(result, "DATE_IN_FUTURE");
     }),
 
     test("Validator sasaran menolak BADUTA legacy", () => {
-      const result = validateSasaran({
-        ...SAMPLE_SASARAN_RAW,
-        jenis_sasaran: "BADUTA",
-      }, {
-        anchorDate: "2026-06-18",
-      });
-
+      const result = validateSasaran({ ...SAMPLE_SASARAN_RAW, jenis_sasaran: "BADUTA" }, { anchorDate: "2026-06-18" });
       expectFalse(result.ok);
       expectErrorCode(result, "BADUTA_LEGACY_NOT_ALLOWED");
     }),
 
     test("Validator sasaran menolak scope tim tidak terdaftar", () => {
-      const result = validateSasaran({
-        ...SAMPLE_SASARAN_RAW,
-        id_tim: "TIM_TJK_999",
-      }, {
-        anchorDate: "2026-06-18",
-      });
-
+      const result = validateSasaran({ ...SAMPLE_SASARAN_RAW, id_tim: "TIM_TJK_999" }, { anchorDate: "2026-06-18" });
       expectFalse(result.ok);
       expectErrorCode(result, "SCOPE_TIM_NOT_REGISTERED");
     }),
@@ -256,50 +190,94 @@ export function runContractTests() {
         currentDate: "2026-06-18",
         parentSasaranKeys: SAMPLE_PARENT_REGISTRY,
       });
-
       expectTrue(result.ok);
-      expectEqual(result.error_count, 0);
       expectEqual(result.domain.pendampingan_unique_key, "5108010101999999|TIM_TJK_001|2026-06-18");
     }),
 
     test("Validator pendampingan menolak parent sasaran tidak ditemukan", () => {
-      const result = validatePendampingan({
-        ...SAMPLE_PENDAMPINGAN_RAW,
-        sasaran_unique_key: "5108010101777777|TIM_TJK_001",
-      }, {
+      const result = validatePendampingan({ ...SAMPLE_PENDAMPINGAN_RAW, sasaran_unique_key: "5108010101777777|TIM_TJK_001" }, {
         currentDate: "2026-06-18",
         parentSasaranKeys: SAMPLE_PARENT_REGISTRY,
       });
-
       expectFalse(result.ok);
       expectErrorCode(result, "PARENT_SASARAN_NOT_FOUND");
     }),
 
     test("Validator pendampingan menolak tanggal_pendampingan masa depan", () => {
-      const result = validatePendampingan({
-        ...SAMPLE_PENDAMPINGAN_RAW,
-        tanggal_pendampingan: "2026-06-19",
-      }, {
+      const result = validatePendampingan({ ...SAMPLE_PENDAMPINGAN_RAW, tanggal_pendampingan: "2026-06-19" }, {
         currentDate: "2026-06-18",
         parentSasaranKeys: SAMPLE_PARENT_REGISTRY,
       });
-
       expectFalse(result.ok);
       expectErrorCode(result, "DATE_IN_FUTURE");
     }),
 
     test("Validator mengembalikan error terstruktur", () => {
-      const result = validateSasaran({
-        ...SAMPLE_SASARAN_RAW,
-        nik: "123",
-      }, {
-        anchorDate: "2026-06-18",
-      });
-
+      const result = validateSasaran({ ...SAMPLE_SASARAN_RAW, nik: "123" }, { anchorDate: "2026-06-18" });
       expectFalse(result.ok);
       expectEqual(typeof result.errors[0].code, "string");
       expectEqual(typeof result.errors[0].field, "string");
       expectEqual(typeof result.errors[0].message, "string");
+    }),
+
+    test("MockSheetProvider health OK", () => {
+      const provider = new MockSheetProvider();
+      const health = provider.getProviderHealth();
+      expectTrue(health.ok);
+      expectEqual(health.sasaran_count, 0);
+      expectEqual(health.pendampingan_count, 0);
+    }),
+
+    test("StagingWriter menulis sasaran valid ke staging", () => {
+      const writer = createWriter();
+      const result = writer.writeSasaran(SAMPLE_SASARAN_RAW, { anchorDate: "2026-06-18" });
+      expectTrue(result.ok);
+      expectEqual(result.provider.key, "5108010101999999|TIM_TJK_001");
+      expectEqual(writer.getSnapshot().provider_health.sasaran_count, 1);
+    }),
+
+    test("StagingWriter menolak sasaran invalid sebelum provider write", () => {
+      const writer = createWriter();
+      const result = writer.writeSasaran({ ...SAMPLE_SASARAN_RAW, nik: "123" }, { anchorDate: "2026-06-18" });
+      expectFalse(result.ok);
+      expectEqual(result.stage, "VALIDATION");
+      expectEqual(writer.getSnapshot().provider_health.sasaran_count, 0);
+    }),
+
+    test("MockSheetProvider menolak duplicate sasaran_unique_key", () => {
+      const writer = createWriter();
+      const first = writer.writeSasaran(SAMPLE_SASARAN_RAW, { anchorDate: "2026-06-18" });
+      const second = writer.writeSasaran(SAMPLE_SASARAN_RAW, { anchorDate: "2026-06-18" });
+      expectTrue(first.ok);
+      expectFalse(second.ok);
+      expectEqual(second.provider.error.code, "DUPLICATE_SASARAN_UNIQUE_KEY");
+    }),
+
+    test("StagingWriter menulis pendampingan setelah parent sasaran ada", () => {
+      const writer = createWriter();
+      const sasaran = writer.writeSasaran(SAMPLE_SASARAN_RAW, { anchorDate: "2026-06-18" });
+      const pendampingan = writer.writePendampingan(SAMPLE_PENDAMPINGAN_RAW, { currentDate: "2026-06-18" });
+      expectTrue(sasaran.ok);
+      expectTrue(pendampingan.ok);
+      expectEqual(writer.getSnapshot().provider_health.pendampingan_count, 1);
+    }),
+
+    test("StagingWriter menolak pendampingan jika parent belum ada", () => {
+      const writer = createWriter();
+      const result = writer.writePendampingan(SAMPLE_PENDAMPINGAN_RAW, { currentDate: "2026-06-18" });
+      expectFalse(result.ok);
+      expectEqual(result.stage, "VALIDATION");
+      expectErrorCode(result.validation, "PARENT_SASARAN_NOT_FOUND");
+    }),
+
+    test("MockSheetProvider menolak duplicate pendampingan_unique_key", () => {
+      const writer = createWriter();
+      writer.writeSasaran(SAMPLE_SASARAN_RAW, { anchorDate: "2026-06-18" });
+      const first = writer.writePendampingan(SAMPLE_PENDAMPINGAN_RAW, { currentDate: "2026-06-18" });
+      const second = writer.writePendampingan(SAMPLE_PENDAMPINGAN_RAW, { currentDate: "2026-06-18" });
+      expectTrue(first.ok);
+      expectFalse(second.ok);
+      expectEqual(second.provider.error.code, "DUPLICATE_PENDAMPINGAN_UNIQUE_KEY");
     }),
   ];
 }

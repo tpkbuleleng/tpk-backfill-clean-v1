@@ -8,10 +8,7 @@ import { todayIsoLocal } from "../domain/DateService.js";
 
 export function validateSasaran(raw = {}, options = {}) {
   const anchorDate = options.anchorDate || raw.anchor_date || raw.tanggal_registrasi || todayIsoLocal();
-  const result = createValidationResult({
-    validator: "SasaranValidator",
-    anchorDate,
-  });
+  const result = createValidationResult({ validator: "SasaranValidator", anchorDate });
 
   requireField(result, raw, "id_tim", "id_tim");
   requireField(result, raw, "kode_kecamatan", "kode_kecamatan");
@@ -37,8 +34,7 @@ export function validateSasaran(raw = {}, options = {}) {
   }
 
   try {
-    const domain = buildSasaranDomain(raw, { anchorDate });
-    return finalizeValidationResult(result, domain);
+    return finalizeValidationResult(result, buildSasaranDomain(raw, { anchorDate }));
   } catch (error) {
     addDomainError(result, error, "jenis_sasaran");
     return finalizeValidationResult(result);
