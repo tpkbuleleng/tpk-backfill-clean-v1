@@ -1,6 +1,6 @@
 /**
  * TPK Backfill Clean v1
- * Paket CB-4 — GAS Web App Endpoint & Real Sheet Provider
+ * Paket CB-5 — Real Sheet Provider Hardening & Multi-Action Write Contract
  *
  * Cara pakai:
  * 1. Buat Google Sheet baru.
@@ -12,15 +12,16 @@
  * 7. Copy Web App URL ke halaman GitHub Pages CB-4.
  */
 
-const TPK_CB4_CONFIG = Object.freeze({
+const TPK_CB5_CONFIG = Object.freeze({
   appName: 'TPK Backfill Clean v1',
-  appVersion: 'CB-4.0.0',
-  buildPackage: 'CB-4 — GAS Web App Endpoint & Real Sheet Provider',
+  appVersion: 'CB-5.0.0',
+  buildPackage: 'CB-5 — Real Sheet Provider Hardening & Multi-Action Write Contract',
   taxonomyVersion: 'TPK_TAXONOMY_2026_7E_R1',
   domainVersion: 'TPK_DOMAIN_2026_CB1',
   validationVersion: 'TPK_VALIDATION_2026_CB2',
-  providerVersion: 'TPK_PROVIDER_2026_CB4',
-  backendMode: 'GAS_WEB_APP_REAL_SHEET_PROVIDER',
+  providerVersion: 'TPK_PROVIDER_2026_CB5',
+  hardeningVersion: 'TPK_PROVIDER_HARDENING_2026_CB5',
+  backendMode: 'GAS_WEB_APP_REAL_SHEET_PROVIDER_HARDENED',
 
   // Kosongkan jika script dibuat dari Extensions → Apps Script pada Google Sheet target.
   // Isi dengan ID Spreadsheet jika memakai standalone Apps Script.
@@ -48,7 +49,7 @@ const TPK_CB4_CONFIG = Object.freeze({
   },
 });
 
-const TPK_CB4_HEADERS = Object.freeze({
+const TPK_CB5_HEADERS = Object.freeze({
   staging_sasaran: [
     'staging_row_id',
     'domain_version',
@@ -160,10 +161,19 @@ function dispatchGet_(action, params) {
     case 'writeSamplePendampingan':
       setupSheets_();
       return writePendampingan_(getSamplePendampingan_(), { currentDate: '2026-06-18' });
+    case 'testDuplicateSasaran':
+      setupSheets_();
+      return testDuplicateSasaran_();
+    case 'testDuplicatePendampingan':
+      setupSheets_();
+      return testDuplicatePendampingan_();
+    case 'runSmokeTest':
+      return runSmokeTest_();
     case 'snapshot':
       setupSheets_();
       return getSnapshot_();
     case 'clearTestRows':
+      setupSheets_();
       return clearTestRows_();
     default:
       return makeError_('ACTION_NOT_FOUND', 'Action tidak dikenal: ' + action, { action });
@@ -183,6 +193,9 @@ function dispatchPost_(e, action, params) {
     case 'writePendampingan':
       setupSheets_();
       return writePendampingan_(body.raw || {}, body.options || {});
+    case 'multiAction':
+      setupSheets_();
+      return runMultiAction_(body.actions || []);
     default:
       return dispatchGet_(action, params);
   }
@@ -192,18 +205,19 @@ function getHealth_() {
   const ss = getSpreadsheet_();
   return {
     ok: true,
-    app_name: TPK_CB4_CONFIG.appName,
-    app_version: TPK_CB4_CONFIG.appVersion,
-    build_package: TPK_CB4_CONFIG.buildPackage,
-    backend_mode: TPK_CB4_CONFIG.backendMode,
-    taxonomy_version: TPK_CB4_CONFIG.taxonomyVersion,
-    domain_version: TPK_CB4_CONFIG.domainVersion,
-    validation_version: TPK_CB4_CONFIG.validationVersion,
-    provider_version: TPK_CB4_CONFIG.providerVersion,
+    app_name: TPK_CB5_CONFIG.appName,
+    app_version: TPK_CB5_CONFIG.appVersion,
+    build_package: TPK_CB5_CONFIG.buildPackage,
+    backend_mode: TPK_CB5_CONFIG.backendMode,
+    taxonomy_version: TPK_CB5_CONFIG.taxonomyVersion,
+    domain_version: TPK_CB5_CONFIG.domainVersion,
+    validation_version: TPK_CB5_CONFIG.validationVersion,
+    provider_version: TPK_CB5_CONFIG.providerVersion,
+    hardening_version: TPK_CB5_CONFIG.hardeningVersion,
     spreadsheet_id: ss.getId(),
     spreadsheet_name: ss.getName(),
-    sheets_found: Object.keys(TPK_CB4_CONFIG.sheets).reduce(function(acc, key) {
-      const name = TPK_CB4_CONFIG.sheets[key];
+    sheets_found: Object.keys(TPK_CB5_CONFIG.sheets).reduce(function(acc, key) {
+      const name = TPK_CB5_CONFIG.sheets[key];
       acc[name] = !!ss.getSheetByName(name);
       return acc;
     }, {}),
@@ -212,22 +226,24 @@ function getHealth_() {
 
 function setupSheets_() {
   const ss = getSpreadsheet_();
-  Object.keys(TPK_CB4_CONFIG.sheets).forEach(function(key) {
-    const name = TPK_CB4_CONFIG.sheets[key];
+  Object.keys(TPK_CB5_CONFIG.sheets).forEach(function(key) {
+    const name = TPK_CB5_CONFIG.sheets[key];
     const sheet = getOrCreateSheet_(ss, name);
-    setHeaders_(sheet, TPK_CB4_HEADERS[name]);
+    setHeaders_(sheet, TPK_CB5_HEADERS[name]);
+    applyPlainTextFormat_(sheet);
   });
 
-  upsertMeta_('app_version', TPK_CB4_CONFIG.appVersion);
-  upsertMeta_('provider_version', TPK_CB4_CONFIG.providerVersion);
-  upsertMeta_('taxonomy_version', TPK_CB4_CONFIG.taxonomyVersion);
-  upsertMeta_('validation_version', TPK_CB4_CONFIG.validationVersion);
+  upsertMeta_('app_version', TPK_CB5_CONFIG.appVersion);
+  upsertMeta_('provider_version', TPK_CB5_CONFIG.providerVersion);
+  upsertMeta_('taxonomy_version', TPK_CB5_CONFIG.taxonomyVersion);
+  upsertMeta_('validation_version', TPK_CB5_CONFIG.validationVersion);
+  upsertMeta_('hardening_version', TPK_CB5_CONFIG.hardeningVersion);
 
   return {
     ok: true,
     action: 'setupSheets',
-    provider_version: TPK_CB4_CONFIG.providerVersion,
-    sheets: TPK_CB4_CONFIG.sheets,
+    provider_version: TPK_CB5_CONFIG.providerVersion,
+    sheets: TPK_CB5_CONFIG.sheets,
   };
 }
 
@@ -242,7 +258,7 @@ function writeSasaran_(raw, options) {
   }
 
   const domain = validation.domain;
-  const sheet = getSheet_(TPK_CB4_CONFIG.sheets.sasaran);
+  const sheet = getSheet_(TPK_CB5_CONFIG.sheets.sasaran);
   const key = domain.sasaran_unique_key;
 
   if (findRowByKey_(sheet, 'sasaran_unique_key', key) > 0) {
@@ -256,7 +272,7 @@ function writeSasaran_(raw, options) {
     created_at: new Date().toISOString(),
   }, domain);
 
-  appendObjectRow_(sheet, TPK_CB4_HEADERS.staging_sasaran, row);
+  appendObjectRow_(sheet, TPK_CB5_HEADERS.staging_sasaran, row);
   appendAudit_('WRITE_SASARAN', key, '', true, '', row);
 
   return {
@@ -264,7 +280,7 @@ function writeSasaran_(raw, options) {
     stage: 'PROVIDER_WRITE',
     action: 'WRITE_SASARAN',
     validation,
-    provider: makeProviderResult_('WRITE_SASARAN', TPK_CB4_CONFIG.sheets.sasaran, key, row),
+    provider: makeProviderResult_('WRITE_SASARAN', TPK_CB5_CONFIG.sheets.sasaran, key, row),
   };
 }
 
@@ -280,7 +296,7 @@ function writePendampingan_(raw, options) {
   }
 
   const domain = validation.domain;
-  const sheet = getSheet_(TPK_CB4_CONFIG.sheets.pendampingan);
+  const sheet = getSheet_(TPK_CB5_CONFIG.sheets.pendampingan);
   const key = domain.pendampingan_unique_key;
 
   if (findRowByKey_(sheet, 'pendampingan_unique_key', key) > 0) {
@@ -294,7 +310,7 @@ function writePendampingan_(raw, options) {
     created_at: new Date().toISOString(),
   }, domain);
 
-  appendObjectRow_(sheet, TPK_CB4_HEADERS.staging_pendampingan, row);
+  appendObjectRow_(sheet, TPK_CB5_HEADERS.staging_pendampingan, row);
   appendAudit_('WRITE_PENDAMPINGAN', key, domain.sasaran_unique_key, true, '', row);
 
   return {
@@ -302,7 +318,7 @@ function writePendampingan_(raw, options) {
     stage: 'PROVIDER_WRITE',
     action: 'WRITE_PENDAMPINGAN',
     validation,
-    provider: makeProviderResult_('WRITE_PENDAMPINGAN', TPK_CB4_CONFIG.sheets.pendampingan, key, row),
+    provider: makeProviderResult_('WRITE_PENDAMPINGAN', TPK_CB5_CONFIG.sheets.pendampingan, key, row),
   };
 }
 
@@ -380,7 +396,7 @@ function buildSasaranDomain_(raw, anchorDate) {
   }
 
   return {
-    domain_version: TPK_CB4_CONFIG.domainVersion,
+    domain_version: TPK_CB5_CONFIG.domainVersion,
     record_type: 'SASARAN',
     sasaran_unique_key: normalizeText_(raw.nik) + '|' + normalizeUpper_(raw.id_tim),
     id_sasaran: normalizeText_(raw.id_sasaran),
@@ -418,7 +434,7 @@ function buildPendampinganDomain_(raw) {
   const parentKey = normalizeText_(raw.sasaran_unique_key);
 
   return {
-    domain_version: TPK_CB4_CONFIG.domainVersion,
+    domain_version: TPK_CB5_CONFIG.domainVersion,
     record_type: 'PENDAMPINGAN',
     pendampingan_unique_key: parentKey + '|' + tanggal,
     sasaran_unique_key: parentKey,
@@ -437,13 +453,13 @@ function buildPendampinganDomain_(raw) {
 }
 
 function getSnapshot_() {
-  const sasaranSheet = getSheet_(TPK_CB4_CONFIG.sheets.sasaran);
-  const pendampinganSheet = getSheet_(TPK_CB4_CONFIG.sheets.pendampingan);
-  const auditSheet = getSheet_(TPK_CB4_CONFIG.sheets.audit);
+  const sasaranSheet = getSheet_(TPK_CB5_CONFIG.sheets.sasaran);
+  const pendampinganSheet = getSheet_(TPK_CB5_CONFIG.sheets.pendampingan);
+  const auditSheet = getSheet_(TPK_CB5_CONFIG.sheets.audit);
 
   return {
     ok: true,
-    provider_version: TPK_CB4_CONFIG.providerVersion,
+    provider_version: TPK_CB5_CONFIG.providerVersion,
     sasaran_count: Math.max(0, sasaranSheet.getLastRow() - 1),
     pendampingan_count: Math.max(0, pendampinganSheet.getLastRow() - 1),
     audit_count: Math.max(0, auditSheet.getLastRow() - 1),
@@ -454,14 +470,74 @@ function getSnapshot_() {
 }
 
 function clearTestRows_() {
-  Object.keys(TPK_CB4_CONFIG.sheets).forEach(function(key) {
-    const name = TPK_CB4_CONFIG.sheets[key];
+  Object.keys(TPK_CB5_CONFIG.sheets).forEach(function(key) {
+    const name = TPK_CB5_CONFIG.sheets[key];
     const sheet = getSheet_(name);
-    const headers = TPK_CB4_HEADERS[name];
+    const headers = TPK_CB5_HEADERS[name];
     sheet.clearContents();
     setHeaders_(sheet, headers);
+    applyPlainTextFormat_(sheet);
   });
   return { ok: true, action: 'clearTestRows' };
+}
+
+
+function runSmokeTest_() {
+  const steps = [];
+  steps.push({ action: 'setupSheets', result: setupSheets_() });
+  steps.push({ action: 'clearTestRows', result: clearTestRows_() });
+  steps.push({ action: 'setupSheets_after_clear', result: setupSheets_() });
+  steps.push({ action: 'writeSampleSasaran', result: writeSasaran_(getSampleSasaran_(), { anchorDate: '2026-06-18' }) });
+  steps.push({ action: 'writeSamplePendampingan', result: writePendampingan_(getSamplePendampingan_(), { currentDate: '2026-06-18' }) });
+  steps.push({ action: 'testDuplicateSasaran', result: testDuplicateSasaran_({ keepExisting: true }) });
+  steps.push({ action: 'testDuplicatePendampingan', result: testDuplicatePendampingan_({ keepExisting: true }) });
+  steps.push({ action: 'snapshot', result: getSnapshot_() });
+  const ok = steps.every(function(step) {
+    if (step.action === 'testDuplicateSasaran' || step.action === 'testDuplicatePendampingan') {
+      return step.result && step.result.duplicate_guard_ok === true;
+    }
+    return step.result && step.result.ok === true;
+  });
+  return { ok, action: 'runSmokeTest', provider_version: TPK_CB5_CONFIG.providerVersion, hardening_version: TPK_CB5_CONFIG.hardeningVersion, steps };
+}
+
+function runMultiAction_(actions) {
+  if (!Array.isArray(actions)) {
+    return makeError_('MULTI_ACTION_INVALID', 'actions harus berupa array.', { actions });
+  }
+  const steps = actions.map(function(item) {
+    const action = typeof item === 'string' ? item : item.action;
+    return { action, result: dispatchGet_(action, {}) };
+  });
+  return { ok: steps.every(function(step) { return step.result && step.result.ok === true; }), action: 'multiAction', steps };
+}
+
+function testDuplicateSasaran_(options) {
+  options = options || {};
+  if (!options.keepExisting) {
+    clearTestRows_();
+    setupSheets_();
+  }
+  const first = writeSasaran_(getSampleSasaran_(), { anchorDate: '2026-06-18' });
+  const second = writeSasaran_(getSampleSasaran_(), { anchorDate: '2026-06-18' });
+  const duplicateGuardOk = second && second.ok === false && second.provider && second.provider.error && second.provider.error.code === 'DUPLICATE_SASARAN_UNIQUE_KEY';
+  return { ok: duplicateGuardOk, action: 'testDuplicateSasaran', duplicate_guard_ok: duplicateGuardOk, first, second };
+}
+
+function testDuplicatePendampingan_(options) {
+  options = options || {};
+  if (!options.keepExisting) {
+    clearTestRows_();
+    setupSheets_();
+    writeSasaran_(getSampleSasaran_(), { anchorDate: '2026-06-18' });
+  }
+  if (getParentSasaranKeys_().indexOf('5108010101999999|TIM_TJK_001') < 0) {
+    writeSasaran_(getSampleSasaran_(), { anchorDate: '2026-06-18' });
+  }
+  const first = writePendampingan_(getSamplePendampingan_(), { currentDate: '2026-06-18' });
+  const second = writePendampingan_(getSamplePendampingan_(), { currentDate: '2026-06-18' });
+  const duplicateGuardOk = second && second.ok === false && second.provider && second.provider.error && second.provider.error.code === 'DUPLICATE_PENDAMPINGAN_UNIQUE_KEY';
+  return { ok: duplicateGuardOk, action: 'testDuplicatePendampingan', duplicate_guard_ok: duplicateGuardOk, first, second };
 }
 
 function getSampleSasaran_() {
@@ -475,7 +551,7 @@ function getSampleSasaran_() {
     no_kk: '5108010101888888',
     tanggal_lahir: '2024-07-18',
     tanggal_registrasi: '2026-06-18',
-    source: 'GAS_SAMPLE_CB4',
+    source: 'GAS_SAMPLE_CB5',
   };
 }
 
@@ -489,13 +565,13 @@ function getSamplePendampingan_() {
     tanggal_lahir: '2024-06-18',
     tanggal_pendampingan: '2026-06-18',
     status_pendampingan: 'KUNJUNGAN_RUMAH',
-    source: 'GAS_SAMPLE_CB4',
+    source: 'GAS_SAMPLE_CB5',
   };
 }
 
 function getSpreadsheet_() {
-  if (TPK_CB4_CONFIG.spreadsheetId) {
-    return SpreadsheetApp.openById(TPK_CB4_CONFIG.spreadsheetId);
+  if (TPK_CB5_CONFIG.spreadsheetId) {
+    return SpreadsheetApp.openById(TPK_CB5_CONFIG.spreadsheetId);
   }
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   if (!ss) {
@@ -525,12 +601,10 @@ function setHeaders_(sheet, headers) {
 
 function appendObjectRow_(sheet, headers, object) {
   const row = headers.map(function(header) {
-    const value = object[header];
-    if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE';
-    if (value === undefined || value === null) return '';
-    return value;
+    return formatCellValue_(object[header], header);
   });
-  sheet.appendRow(row);
+  const nextRow = sheet.getLastRow() + 1;
+  sheet.getRange(nextRow, 1, 1, headers.length).setNumberFormat('@').setValues([row]);
 }
 
 function readObjects_(sheet) {
@@ -542,7 +616,7 @@ function readObjects_(sheet) {
   }).map(function(row) {
     const obj = {};
     headers.forEach(function(header, i) {
-      obj[header] = row[i];
+      obj[header] = formatCellValue_(row[i], header);
     });
     return obj;
   });
@@ -554,7 +628,7 @@ function findRowByKey_(sheet, keyField, keyValue) {
   if (index < 0) throw new Error('Header key tidak ditemukan: ' + keyField);
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return -1;
-  const values = sheet.getRange(2, index + 1, lastRow - 1, 1).getValues();
+  const values = sheet.getRange(2, index + 1, lastRow - 1, 1).getDisplayValues();
   for (let i = 0; i < values.length; i++) {
     if (String(values[i][0]) === String(keyValue)) return i + 2;
   }
@@ -562,13 +636,13 @@ function findRowByKey_(sheet, keyField, keyValue) {
 }
 
 function getParentSasaranKeys_() {
-  const sheet = getSheet_(TPK_CB4_CONFIG.sheets.sasaran);
+  const sheet = getSheet_(TPK_CB5_CONFIG.sheets.sasaran);
   const objects = readObjects_(sheet);
   return objects.map(function(row) { return String(row.sasaran_unique_key || ''); }).filter(Boolean);
 }
 
 function appendAudit_(action, key, parentKey, ok, errorCode, payload) {
-  const sheet = getSheet_(TPK_CB4_CONFIG.sheets.audit);
+  const sheet = getSheet_(TPK_CB5_CONFIG.sheets.audit);
   const row = {
     audit_id: 'AUDIT_' + pad4_(Math.max(sheet.getLastRow(), 1)),
     action,
@@ -579,11 +653,11 @@ function appendAudit_(action, key, parentKey, ok, errorCode, payload) {
     timestamp: new Date().toISOString(),
     payload_json: JSON.stringify(payload || {}),
   };
-  appendObjectRow_(sheet, TPK_CB4_HEADERS.staging_audit_log, row);
+  appendObjectRow_(sheet, TPK_CB5_HEADERS.staging_audit_log, row);
 }
 
 function upsertMeta_(key, value) {
-  const sheet = getSheet_(TPK_CB4_CONFIG.sheets.meta);
+  const sheet = getSheet_(TPK_CB5_CONFIG.sheets.meta);
   const row = findRowByKey_(sheet, 'key', key);
   const values = [key, value, new Date().toISOString()];
   if (row > 0) {
@@ -596,7 +670,7 @@ function upsertMeta_(key, value) {
 function newValidationResult_(validator, context) {
   return {
     ok: true,
-    validation_version: TPK_CB4_CONFIG.validationVersion,
+    validation_version: TPK_CB5_CONFIG.validationVersion,
     context: Object.assign({ validator }, context || {}),
     error_count: 0,
     warning_count: 0,
@@ -653,11 +727,11 @@ function validateNotFuture_(result, value, anchorDate, field) {
 function validateScope_(result, raw) {
   const kec = normalizeUpper_(raw.kode_kecamatan);
   const tim = normalizeUpper_(raw.id_tim);
-  if (TPK_CB4_CONFIG.officialKecamatanCodes.indexOf(kec) < 0) {
+  if (TPK_CB5_CONFIG.officialKecamatanCodes.indexOf(kec) < 0) {
     addError_(result, 'KODE_KECAMATAN_INVALID', 'kode_kecamatan', 'kode_kecamatan tidak terdaftar.', { kode_kecamatan: kec });
     return;
   }
-  const registered = TPK_CB4_CONFIG.validTimByKecamatan[kec] || [];
+  const registered = TPK_CB5_CONFIG.validTimByKecamatan[kec] || [];
   if (registered.indexOf(tim) < 0) {
     addError_(result, 'SCOPE_TIM_NOT_REGISTERED', 'id_tim', 'id_tim tidak terdaftar pada kode_kecamatan tersebut.', { kode_kecamatan: kec, id_tim: tim });
   }
@@ -672,7 +746,7 @@ function assertJenis_(value) {
   const jenis = normalizeUpper_(value);
   if (!jenis) throw makeDomainError_('JENIS_SASARAN_REQUIRED', 'jenis_sasaran wajib diisi.', { value });
   if (jenis === 'BADUTA') throw makeDomainError_('BADUTA_LEGACY_NOT_ALLOWED', 'BADUTA tidak boleh menjadi jenis_sasaran.', { value });
-  if (TPK_CB4_CONFIG.officialJenisSasaran.indexOf(jenis) < 0) {
+  if (TPK_CB5_CONFIG.officialJenisSasaran.indexOf(jenis) < 0) {
     throw makeDomainError_('JENIS_SASARAN_INVALID', 'jenis_sasaran tidak valid: ' + value, { value });
   }
   return jenis;
@@ -714,8 +788,8 @@ function parseIsoDate_(value) {
 function makeProviderResult_(action, table, key, row) {
   return {
     ok: true,
-    provider_version: TPK_CB4_CONFIG.providerVersion,
-    provider_mode: TPK_CB4_CONFIG.backendMode,
+    provider_version: TPK_CB5_CONFIG.providerVersion,
+    provider_mode: TPK_CB5_CONFIG.backendMode,
     action,
     table,
     key,
@@ -727,8 +801,8 @@ function makeProviderResult_(action, table, key, row) {
 function makeError_(code, message, details) {
   return {
     ok: false,
-    provider_version: TPK_CB4_CONFIG.providerVersion,
-    provider_mode: TPK_CB4_CONFIG.backendMode,
+    provider_version: TPK_CB5_CONFIG.providerVersion,
+    provider_mode: TPK_CB5_CONFIG.backendMode,
     error: { code, message, details: details || {} },
   };
 }
@@ -750,6 +824,37 @@ function normalizeText_(value) {
 
 function normalizeUpper_(value) {
   return normalizeText_(value).toUpperCase();
+}
+
+
+function applyPlainTextFormat_(sheet) {
+  const maxRows = Math.max(sheet.getMaxRows(), 1000);
+  const maxCols = Math.max(sheet.getMaxColumns(), 26);
+  sheet.getRange(1, 1, maxRows, maxCols).setNumberFormat('@');
+}
+
+function normalizeIsoDateString_(value) {
+  if (value instanceof Date) {
+    return Utilities.formatDate(value, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  }
+  const text = normalizeText_(value);
+  const isoMatch = text.match(/^(\d{4}-\d{2}-\d{2})/);
+  return isoMatch ? isoMatch[1] : text;
+}
+
+function formatCellValue_(value, header) {
+  if (value instanceof Date) {
+    if (String(header || '').indexOf('tanggal_') === 0 || String(header || '').indexOf('_date') >= 0) {
+      return Utilities.formatDate(value, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    }
+    return value.toISOString();
+  }
+  if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE';
+  if (value === undefined || value === null) return '';
+  if (String(header || '').indexOf('tanggal_') === 0 || String(header || '').indexOf('_date') >= 0) {
+    return normalizeIsoDateString_(value);
+  }
+  return String(value);
 }
 
 function pad4_(value) {

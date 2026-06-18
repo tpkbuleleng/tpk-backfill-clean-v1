@@ -1,4 +1,4 @@
-# 11 — CB-4 Deploy Instructions
+# 11 — CB-5 Deploy Instructions
 
 ## 1. Buat Google Sheet
 
@@ -45,7 +45,7 @@ Copy URL yang berakhiran:
 
 ## 6. Uji dari GitHub Pages
 
-Pada halaman CB-4:
+Pada halaman CB-5:
 
 1. Tempel Web App URL
 2. Klik `Simpan URL`

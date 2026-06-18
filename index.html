@@ -3,18 +3,18 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>TPK Backfill Clean v1 — CB-4</title>
-  <meta name="description" content="TPK Backfill Clean Build v1 — CB-4 GAS Web App Endpoint & Real Sheet Provider" />
+  <title>TPK Backfill Clean v1 — CB-5</title>
+  <meta name="description" content="TPK Backfill Clean Build v1 — CB-5 Real Sheet Provider Hardening & Multi-Action Write Contract" />
   <link rel="stylesheet" href="./web/css/app.css" />
 </head>
 <body>
   <main class="shell">
     <section class="hero">
       <p class="eyebrow">TPK Backfill Clean Build</p>
-      <h1>CB-4 GAS Web App Endpoint & Real Sheet Provider</h1>
+      <h1>CB-5 Real Sheet Provider Hardening & Multi-Action Write Contract</h1>
       <p class="lead">
-        Regression test tetap berjalan dengan mock provider. Untuk uji tulis nyata ke Google Sheet,
-        deploy Apps Script Web App lalu tempel URL endpoint pada panel di bawah.
+        Regression test tetap berjalan dengan mock provider. Uji real Google Sheet dilakukan melalui GAS Web App endpoint.
+        CB-5 menambahkan hardening tanggal, clear test rows, duplicate guard konsisten, dan multi-action smoke test.
       </p>
     </section>
 
@@ -24,14 +24,14 @@
     </section>
 
     <section class="card">
-      <h2>Regression Test CB-4</h2>
+      <h2>Regression Test CB-5</h2>
       <div id="test-output" class="test-output" aria-live="polite">Menjalankan test...</div>
     </section>
 
     <section class="card">
       <h2>GAS Web App Endpoint</h2>
       <p class="muted">
-        Tempel URL Web App Apps Script setelah deploy. Tombol di bawah memakai JSONP GET bridge agar bisa diuji langsung dari GitHub Pages.
+        Tempel URL Web App Apps Script setelah deploy ulang CB-5. Tombol memakai JSONP GET bridge agar dapat diuji dari GitHub Pages.
       </p>
       <div class="endpoint-grid">
         <label class="field-label" for="gas-endpoint-url">Web App URL</label>
@@ -40,8 +40,12 @@
           <button id="btn-save-endpoint" type="button">Simpan URL</button>
           <button id="btn-gas-health" type="button">Health</button>
           <button id="btn-gas-setup" type="button">Setup Sheets</button>
+          <button id="btn-gas-clear" type="button">Clear Test Rows</button>
           <button id="btn-gas-write-sasaran" type="button">Write Sample Sasaran</button>
           <button id="btn-gas-write-pendampingan" type="button">Write Sample Pendampingan</button>
+          <button id="btn-gas-duplicate-sasaran" type="button">Test Duplicate Sasaran</button>
+          <button id="btn-gas-duplicate-pendampingan" type="button">Test Duplicate Pendampingan</button>
+          <button id="btn-gas-smoke" type="button">Run GAS Smoke</button>
           <button id="btn-gas-snapshot" type="button">Snapshot</button>
         </div>
       </div>
@@ -50,21 +54,16 @@
 
     <section class="card">
       <h2>Sample Mock Staging Writer</h2>
-      <p class="muted">
-        Contoh penulisan sasaran dan pendampingan ke mock staging setelah lulus validasi.
-      </p>
+      <p class="muted">Contoh penulisan sasaran dan pendampingan ke mock staging setelah lulus validasi.</p>
       <pre id="staging-sample" class="code-block">Memuat sample...</pre>
     </section>
 
     <section class="card">
       <h2>Sample Mock Provider Snapshot</h2>
-      <p class="muted">
-        Snapshot staging mock: sasaran, pendampingan, dan audit log.
-      </p>
+      <p class="muted">Snapshot staging mock: sasaran, pendampingan, dan audit log.</p>
       <pre id="provider-snapshot" class="code-block">Memuat snapshot...</pre>
     </section>
   </main>
-
   <script type="module" src="./web/js/app.js"></script>
 </body>
 </html>

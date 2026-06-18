@@ -2,7 +2,7 @@
 
 ## Paket
 
-CB-4 — GAS Web App Endpoint & Real Sheet Provider
+CB-5 — GAS Web App Endpoint & Real Sheet Provider
 
 ## Endpoint Mode
 
@@ -27,7 +27,7 @@ Untuk GitHub Pages, parameter `callback` otomatis ditambahkan.
 
 ## doPost
 
-`doPost` disiapkan untuk pemakaian lanjutan, tetapi uji CB-4 dari GitHub Pages memakai JSONP GET bridge.
+`doPost` disiapkan untuk pemakaian lanjutan, tetapi uji CB-5 dari GitHub Pages memakai JSONP GET bridge.
 
 ## Real Sheet Provider
 
@@ -40,6 +40,6 @@ staging_audit_log
 meta_cb4
 ```
 
-## Batas CB-4
+## Batas CB-5
 
-CB-4 belum menjadi autentikasi produksi. Endpoint Web App dipakai untuk uji integrasi real sheet provider.
+CB-5 belum menjadi autentikasi produksi. Endpoint Web App dipakai untuk uji integrasi real sheet provider.

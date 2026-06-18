@@ -1,6 +1,6 @@
 export const SHEET_CONFIG = Object.freeze({
   providerMode: "MOCK_BROWSER_STAGING_WITH_GAS_ENDPOINT_OPTION",
-  realProviderMode: "GAS_WEB_APP_REAL_SHEET_PROVIDER",
+  realProviderMode: "GAS_WEB_APP_REAL_SHEET_PROVIDER_HARDENED",
   endpointMode: "JSONP_GET_BRIDGE",
   stagingTables: Object.freeze({
     sasaran: "staging_sasaran",

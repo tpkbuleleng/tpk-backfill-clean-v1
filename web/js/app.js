@@ -30,6 +30,7 @@ function renderStatus() {
     ["Validation Version", APP_CONFIG.validationVersion],
     ["Provider Version", APP_CONFIG.providerVersion],
     ["Endpoint Bridge Version", APP_CONFIG.endpointBridgeVersion],
+    ["Hardening Version", APP_CONFIG.hardeningVersion],
     ["Taxonomy Version", TAXONOMY_CONFIG.taxonomyVersion],
     ["Official Jenis Sasaran", TAXONOMY_CONFIG.officialJenisSasaran.join(", ")],
     ["Legacy BADUTA Allowed", TAXONOMY_CONFIG.allowLegacyBaduta ? "YA" : "TIDAK"],
@@ -127,12 +128,28 @@ function setupEndpointPanel() {
     try { print(await getClient().setupSheets()); } catch (error) { printError(error); }
   });
 
+  document.querySelector("#btn-gas-clear").addEventListener("click", async () => {
+    try { print(await getClient().clearTestRows()); } catch (error) { printError(error); }
+  });
+
   document.querySelector("#btn-gas-write-sasaran").addEventListener("click", async () => {
     try { print(await getClient().writeSampleSasaran()); } catch (error) { printError(error); }
   });
 
   document.querySelector("#btn-gas-write-pendampingan").addEventListener("click", async () => {
     try { print(await getClient().writeSamplePendampingan()); } catch (error) { printError(error); }
+  });
+
+  document.querySelector("#btn-gas-duplicate-sasaran").addEventListener("click", async () => {
+    try { print(await getClient().testDuplicateSasaran()); } catch (error) { printError(error); }
+  });
+
+  document.querySelector("#btn-gas-duplicate-pendampingan").addEventListener("click", async () => {
+    try { print(await getClient().testDuplicatePendampingan()); } catch (error) { printError(error); }
+  });
+
+  document.querySelector("#btn-gas-smoke").addEventListener("click", async () => {
+    try { print(await getClient().runSmokeTest()); } catch (error) { printError(error); }
   });
 
   document.querySelector("#btn-gas-snapshot").addEventListener("click", async () => {

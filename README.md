@@ -4,14 +4,14 @@ Clean rebuild untuk TPK Backfill berdasarkan kontrak final yang sudah dikunci.
 
 ## Status
 
-Paket aktif: **CB-4 — GAS Web App Endpoint & Real Sheet Provider**
+Paket aktif: **CB-5 — Real Sheet Provider Hardening & Multi-Action Write Contract**
 
 Mode uji:
 
 - GitHub Pages static health-check
 - Regression test tetap memakai Mock Sheet Provider
-- GAS Web App Endpoint dapat diuji dari halaman GitHub Pages setelah URL endpoint ditempel
-- Real Sheet Provider menulis ke Google Sheet melalui Apps Script Web App
+- GAS Web App Endpoint untuk uji real Google Sheet
+- Real Sheet Provider sudah diperkuat untuk normalisasi tanggal, clear test rows, duplicate guard, multi-action smoke test, snapshot bersih, dan audit log terstruktur.
 
 ## GitHub Pages
 
@@ -32,15 +32,7 @@ File Apps Script utama:
 gas/Code.gs
 ```
 
-Cara paling aman:
-
-1. Buat Google Sheet baru untuk uji CB-4.
-2. Buka `Extensions → Apps Script`.
-3. Hapus isi `Code.gs`.
-4. Tempel isi file `gas/Code.gs`.
-5. Deploy sebagai Web App.
-6. Copy Web App URL.
-7. Paste URL pada panel CB-4 di GitHub Pages.
+Untuk CB-5, Apps Script `TPK_BC` perlu diganti dengan isi `gas/Code.gs` dari paket ini, lalu deploy versi Web App baru.
 
 ## Paket
 
@@ -50,5 +42,5 @@ CB-1 — Taxonomy, Age Engine & Domain Model
 CB-2 — Shared Validation Layer
 CB-3 — Sheet Provider & Staging Writer
 CB-4 — GAS Web App Endpoint & Real Sheet Provider
+CB-5 — Real Sheet Provider Hardening & Multi-Action Write Contract
 ```
-

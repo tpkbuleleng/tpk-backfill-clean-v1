@@ -292,12 +292,19 @@ export function runContractTests() {
       throw new Error("Expected endpoint URL error");
     }),
 
-    test("CB-4 provider version aktif", () => {
+    test("CB-5 provider version aktif", () => {
       const provider = new MockSheetProvider();
       const writer = new StagingWriterService(provider);
       const result = writer.writeSasaran(SAMPLE_SASARAN_RAW, { anchorDate: "2026-06-18" });
       expectTrue(result.ok);
-      expectEqual(result.provider.provider_version, "TPK_PROVIDER_2026_CB4");
+      expectEqual(result.provider.provider_version, "TPK_PROVIDER_2026_CB5");
+    }),
+    test("GasWebAppClient CB-5 methods tersedia", () => {
+      const client = new GasWebAppClient("https://script.google.com/macros/s/test/exec");
+      expectEqual(typeof client.clearTestRows, "function");
+      expectEqual(typeof client.testDuplicateSasaran, "function");
+      expectEqual(typeof client.testDuplicatePendampingan, "function");
+      expectEqual(typeof client.runSmokeTest, "function");
     }),
   ];
 }
