@@ -6,6 +6,7 @@ import { buildPendampinganDomain } from "../domain/PendampinganModel.js";
 import { validateSasaran } from "../validation/SasaranValidator.js";
 import { validatePendampingan } from "../validation/PendampinganValidator.js";
 import { MockSheetProvider } from "../provider/MockSheetProvider.js";
+import { GasWebAppClient } from "../provider/GasWebAppClient.js";
 import { StagingWriterService } from "../service/StagingWriterService.js";
 import { SAMPLE_SASARAN_RAW, SAMPLE_PENDAMPINGAN_RAW, SAMPLE_PARENT_REGISTRY } from "../sample/SampleData.js";
 
@@ -278,6 +279,25 @@ export function runContractTests() {
       expectTrue(first.ok);
       expectFalse(second.ok);
       expectEqual(second.provider.error.code, "DUPLICATE_PENDAMPINGAN_UNIQUE_KEY");
+    }),
+
+    test("GasWebAppClient menolak request tanpa endpoint URL", () => {
+      const client = new GasWebAppClient("");
+      try {
+        client.assertReady();
+      } catch (error) {
+        expectEqual(error.message, "GAS Web App URL belum diisi.");
+        return;
+      }
+      throw new Error("Expected endpoint URL error");
+    }),
+
+    test("CB-4 provider version aktif", () => {
+      const provider = new MockSheetProvider();
+      const writer = new StagingWriterService(provider);
+      const result = writer.writeSasaran(SAMPLE_SASARAN_RAW, { anchorDate: "2026-06-18" });
+      expectTrue(result.ok);
+      expectEqual(result.provider.provider_version, "TPK_PROVIDER_2026_CB4");
     }),
   ];
 }

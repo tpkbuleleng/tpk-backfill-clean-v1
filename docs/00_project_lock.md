@@ -4,32 +4,36 @@
 
 TPK Backfill Clean v1
 
-## Prinsip
-
-Clean codebase, frozen domain contract.
-
 ## Paket aktif
 
-CB-3 — Sheet Provider & Staging Writer
+CB-4 — GAS Web App Endpoint & Real Sheet Provider
 
-## Batas Paket CB-3
+## Status Paket Sebelumnya
 
-CB-3 menangani:
+```txt
+CB-0 PASS
+CB-1 PASS
+CB-2 PASS
+CB-3 PASS
+```
 
-- Provider interface mock berbasis browser
-- Staging writer orchestration
-- Write sasaran valid ke staging
-- Write pendampingan valid ke staging
-- Duplicate guard sasaran
-- Duplicate guard pendampingan
-- Parent sasaran guard untuk pendampingan
-- Audit log mock
+## Batas CB-4
 
-CB-3 belum menangani:
+CB-4 menangani:
 
-- koneksi GitHub Pages ke Apps Script endpoint
-- deploy Web App GAS
-- baca/tulis Google Sheet sungguhan dari browser
+- GAS Web App endpoint
+- JSONP GET bridge dari GitHub Pages
+- real sheet setup
+- real write sample sasaran
+- real write sample pendampingan
+- real staging snapshot
+- audit log staging
+
+CB-4 belum menangani:
+
+- autentikasi produksi
+- token/session
+- routing 9 workbook kecamatan
 - CSV export
 - Supabase import
-- Auth/RLS
+- RLS/Auth Supabase

@@ -136,3 +136,43 @@ h2 {
     text-align: left;
   }
 }
+
+
+.endpoint-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.field-label {
+  font-weight: 700;
+}
+
+.endpoint-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font: inherit;
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+button {
+  appearance: none;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: #ffffff;
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #f2f5fa;
+}

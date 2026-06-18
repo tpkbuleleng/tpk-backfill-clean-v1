@@ -1,5 +1,5 @@
 export const SCOPE_CONFIG = Object.freeze({
-  registryMode: "STATIC_CB3_TEST_REGISTRY",
+  registryMode: "STATIC_CB4_TEST_REGISTRY",
 
   officialKecamatanCodes: Object.freeze([
     "GRK", "SRT", "BSB", "BJR", "BLL", "SKS", "SWN", "KBT", "TJK",
