@@ -33,3 +33,18 @@ function TPK_parseIsoLocalDate_(value, fieldName) {
 
   return date;
 }
+
+function TPK_assertNotFutureDate_(value, anchorIsoDate, fieldName) {
+  const date = TPK_parseIsoLocalDate_(value, fieldName || 'date');
+  const anchor = TPK_parseIsoLocalDate_(anchorIsoDate, 'anchor_date');
+
+  if (date > anchor) {
+    throw TPK_DomainError_('DATE_IN_FUTURE', (fieldName || 'date') + ' tidak boleh lebih baru dari anchor date.', {
+      fieldName: fieldName || 'date',
+      value: value,
+      anchorIsoDate: anchorIsoDate,
+    });
+  }
+
+  return value;
+}

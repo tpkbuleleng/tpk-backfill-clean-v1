@@ -8,30 +8,37 @@ TPK Backfill Clean v1
 
 Clean codebase, frozen domain contract.
 
-## Tujuan
-
-Membangun ulang codebase dari nol tanpa membawa patch historis, tetapi tetap memakai kontrak domain final yang sudah dikunci.
-
 ## Paket aktif
 
-CB-1 — Taxonomy, Age Engine & Domain Model
+CB-2 — Shared Validation Layer
 
-## Batas Paket CB-1
+## Batas Paket CB-2
 
-CB-1 hanya menangani:
+CB-2 menangani:
 
-- taxonomy
-- age engine
-- sasaran domain model
-- pendampingan domain model
-- scope domain model
-- regression test berbasis browser
+- validasi NIK 16 digit
+- validasi KK 16 digit
+- validasi tanggal tidak masa depan
+- validasi taxonomy
+- validasi scope statis sementara
+- validasi parent sasaran untuk pendampingan
+- output error terstruktur
 
-CB-1 belum menangani:
+CB-2 belum menangani:
 
-- validasi NIK/KK final
-- Sheet Provider
+- baca/tulis Google Sheet
 - CSV export
 - Supabase import
 - Auth/RLS
 - UI form produksi
+- registry scope penuh dari master_tim/master_wilayah
+
+## Keputusan
+
+Scope registry pada CB-2 masih statis untuk test:
+
+```txt
+TJK → TIM_TJK_001
+```
+
+Registry penuh akan masuk pada paket provider/master reference berikutnya.

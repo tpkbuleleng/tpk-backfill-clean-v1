@@ -11,7 +11,8 @@ Export wajib membawa:
 - selected_record_keys
 - checksum_sha256
 - taxonomy_version
+- validation_version
 
-Catatan CB-1:
+Catatan CB-2:
 
-Import/export belum diimplementasikan. Kontrak ini dipertahankan sebagai pagar untuk paket CB-4.
+Import/export belum diimplementasikan. Shared Validation Layer sudah siap menjadi pagar sebelum export/import.

@@ -23,7 +23,7 @@ body {
 }
 
 .shell {
-  width: min(960px, calc(100% - 32px));
+  width: min(1000px, calc(100% - 32px));
   margin: 0 auto;
   padding: 40px 0;
 }
@@ -53,7 +53,7 @@ h2 {
 }
 
 .lead {
-  max-width: 800px;
+  max-width: 840px;
   margin: 16px 0 0;
   color: var(--muted);
   font-size: 17px;

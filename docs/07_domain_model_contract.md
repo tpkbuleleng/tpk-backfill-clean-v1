@@ -2,7 +2,7 @@
 
 ## Tujuan
 
-Domain model bertugas membentuk representasi data yang sudah dinormalisasi secara domain, tetapi belum melakukan validasi bisnis lengkap.
+Domain model bertugas membentuk representasi data yang sudah dinormalisasi secara domain.
 
 ## Prinsip
 
@@ -11,22 +11,9 @@ Domain model bertugas membentuk representasi data yang sudah dinormalisasi secar
 - Domain model tidak memanggil Supabase.
 - Domain model tidak bergantung pada UI.
 - Domain model hanya menerima object raw dan mengembalikan object domain.
-- Domain model boleh melempar DomainError untuk kontrak domain keras, seperti BADUTA legacy atau umur BALITA di luar rentang.
+- Domain model boleh melempar DomainError untuk kontrak domain keras.
 
 ## Sasaran Domain
-
-Input minimal:
-
-```txt
-id_sasaran
-id_tim
-kode_kecamatan
-jenis_sasaran
-nama_sasaran
-nik
-no_kk
-tanggal_lahir
-```
 
 Output tambahan:
 
@@ -39,19 +26,6 @@ is_baduta_prioritas
 ```
 
 ## Pendampingan Domain
-
-Input minimal:
-
-```txt
-sasaran_unique_key
-id_sasaran
-id_tim
-kode_kecamatan
-jenis_sasaran
-tanggal_lahir
-tanggal_pendampingan
-status_pendampingan
-```
 
 Output tambahan:
 

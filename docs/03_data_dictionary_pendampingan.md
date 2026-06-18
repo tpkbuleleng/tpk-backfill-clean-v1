@@ -1,21 +1,22 @@
 # 03 — Data Dictionary Pendampingan
 
-## Minimal Field Domain Pendampingan CB-1
+## Minimal Field Domain Pendampingan CB-2
 
-| Field | Keterangan |
-|---|---|
-| domain_version | Versi domain model |
-| record_type | `PENDAMPINGAN` |
-| pendampingan_unique_key | Default: `sasaran_unique_key|tanggal_pendampingan` |
-| sasaran_unique_key | Parent sasaran |
-| id_sasaran | ID sasaran |
-| id_tim | ID tim |
-| kode_kecamatan | Kode kecamatan |
-| scope_key | `kode_kecamatan|id_tim` |
-| tanggal_pendampingan | Anchor umur pendampingan |
-| jenis_sasaran | CATIN/BUMIL/BUFAS/BALITA |
-| age_months_at_pendampingan | Umur bulan pada tanggal pendampingan |
-| kelompok_umur_balita_at_pendampingan | Kelompok umur balita saat pendampingan |
-| is_baduta_prioritas_at_pendampingan | Derived priority saat pendampingan |
-| status_pendampingan | Status/metode pendampingan |
-| source | Sumber pembentukan domain |
+| Field | Wajib | Keterangan |
+|---|---:|---|
+| domain_version | Ya | Versi domain model |
+| record_type | Ya | `PENDAMPINGAN` |
+| pendampingan_unique_key | Ya | Default: `sasaran_unique_key|tanggal_pendampingan` |
+| sasaran_unique_key | Ya | Parent sasaran |
+| id_sasaran | Ya | ID sasaran |
+| id_tim | Ya | ID tim |
+| kode_kecamatan | Ya | Kode kecamatan |
+| scope_key | Ya | `kode_kecamatan|id_tim` |
+| tanggal_pendampingan | Ya | Anchor umur pendampingan |
+| jenis_sasaran | Ya | CATIN/BUMIL/BUFAS/BALITA |
+| tanggal_lahir | Ya | Dibutuhkan untuk derived priority |
+| age_months_at_pendampingan | Derived | Umur bulan pada tanggal pendampingan |
+| kelompok_umur_balita_at_pendampingan | Derived | Kelompok umur saat pendampingan |
+| is_baduta_prioritas_at_pendampingan | Derived | Derived priority saat pendampingan |
+| status_pendampingan | Ya | Status/metode pendampingan |
+| source | Tidak | Sumber pembentukan domain |
