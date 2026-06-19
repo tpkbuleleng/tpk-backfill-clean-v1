@@ -1,866 +1,444 @@
 /**
- * TPK Backfill Clean v1
- * Paket CB-5 — Real Sheet Provider Hardening & Multi-Action Write Contract
- *
- * Cara pakai:
- * 1. Buat Google Sheet baru.
- * 2. Extensions → Apps Script.
- * 3. Tempel file ini sebagai Code.gs.
- * 4. Deploy → New deployment → Web app.
- * 5. Execute as: Me.
- * 6. Who has access: Anyone with the link.
- * 7. Copy Web App URL ke halaman GitHub Pages CB-4.
+ * TPK Backfill Clean v1 — CB-6 Selective Export CSV & Manifest Builder
+ * Apps Script file: gas/Code.gs
+ * Deploy as Web App: Execute as Me, Anyone with link / authorized sesuai kebutuhan uji.
  */
 
-const TPK_CB5_CONFIG = Object.freeze({
-  appName: 'TPK Backfill Clean v1',
-  appVersion: 'CB-5.0.0',
-  buildPackage: 'CB-5 — Real Sheet Provider Hardening & Multi-Action Write Contract',
+const CB6_CONFIG = Object.freeze({
+  appVersion: 'CB-6.0.0',
+  packageVersion: 'TPK_BACKFILL_CLEAN_2026_CB6',
+  providerVersion: 'TPK_PROVIDER_2026_CB6',
+  endpointBridgeVersion: 'TPK_ENDPOINT_BRIDGE_2026_CB6',
+  exportVersion: 'TPK_SELECTIVE_EXPORT_2026_CB6',
   taxonomyVersion: 'TPK_TAXONOMY_2026_7E_R1',
-  domainVersion: 'TPK_DOMAIN_2026_CB1',
   validationVersion: 'TPK_VALIDATION_2026_CB2',
-  providerVersion: 'TPK_PROVIDER_2026_CB5',
   hardeningVersion: 'TPK_PROVIDER_HARDENING_2026_CB5',
-  backendMode: 'GAS_WEB_APP_REAL_SHEET_PROVIDER_HARDENED',
-
-  // Kosongkan jika script dibuat dari Extensions → Apps Script pada Google Sheet target.
-  // Isi dengan ID Spreadsheet jika memakai standalone Apps Script.
-  spreadsheetId: '',
-
-  officialJenisSasaran: ['CATIN', 'BUMIL', 'BUFAS', 'BALITA'],
-  officialKecamatanCodes: ['GRK', 'SRT', 'BSB', 'BJR', 'BLL', 'SKS', 'SWN', 'KBT', 'TJK'],
-  validTimByKecamatan: {
-    TJK: ['TIM_TJK_001'],
-    GRK: [],
-    SRT: [],
-    BSB: [],
-    BJR: [],
-    BLL: [],
-    SKS: [],
-    SWN: [],
-    KBT: [],
-  },
-
+  backendMode: 'GAS_WEB_APP_ENDPOINT_OPTIONAL',
+  realProviderMode: 'GAS_WEB_APP_REAL_SHEET_PROVIDER_HARDENED_EXPORT',
   sheets: {
     sasaran: 'staging_sasaran',
     pendampingan: 'staging_pendampingan',
     audit: 'staging_audit_log',
-    meta: 'meta_cb4',
-  },
+    meta: 'meta_cb4'
+  }
 });
 
-const TPK_CB5_HEADERS = Object.freeze({
+const CB6_HEADERS = Object.freeze({
   staging_sasaran: [
-    'staging_row_id',
-    'domain_version',
-    'record_type',
-    'sasaran_unique_key',
-    'id_sasaran',
-    'id_tim',
-    'kode_kecamatan',
-    'scope_key',
-    'jenis_sasaran',
-    'nama_sasaran',
-    'nik',
-    'no_kk',
-    'tanggal_lahir',
-    'anchor_date',
-    'age_months_at_anchor',
-    'kelompok_umur_balita',
-    'is_baduta_prioritas',
-    'source',
-    'created_at',
+    'record_key','kode_kecamatan','id_tim','jenis_sasaran','nik','no_kk','nama_sasaran',
+    'tanggal_lahir','tanggal_registrasi','anchor_date','is_baduta_prioritas','kelompok_umur_balita',
+    'created_at','source'
   ],
   staging_pendampingan: [
-    'staging_row_id',
-    'domain_version',
-    'record_type',
-    'pendampingan_unique_key',
-    'sasaran_unique_key',
-    'id_sasaran',
-    'id_tim',
-    'kode_kecamatan',
-    'scope_key',
-    'tanggal_pendampingan',
-    'jenis_sasaran',
-    'age_months_at_pendampingan',
-    'kelompok_umur_balita_at_pendampingan',
-    'is_baduta_prioritas_at_pendampingan',
-    'status_pendampingan',
-    'source',
-    'created_at',
+    'record_key','sasaran_record_key','kode_kecamatan','id_tim','jenis_sasaran','nik','tanggal_pendampingan',
+    'periode_laporan','status_pendampingan','is_baduta_prioritas_at_pendampingan',
+    'kelompok_umur_balita_at_pendampingan','created_at','source'
   ],
-  staging_audit_log: [
-    'audit_id',
-    'action',
-    'key',
-    'parent_key',
-    'ok',
-    'error_code',
-    'timestamp',
-    'payload_json',
-  ],
-  meta_cb4: [
-    'key',
-    'value',
-    'updated_at',
-  ],
+  staging_audit_log: ['timestamp','action','ok','record_key','message','payload_json'],
+  meta_cb4: ['key','value','updated_at']
 });
 
 function doGet(e) {
-  return handleEndpoint_(e || {}, 'GET');
+  return jsonOutput_(handleRequest_('health', {}));
 }
 
 function doPost(e) {
-  return handleEndpoint_(e || {}, 'POST');
-}
-
-function handleEndpoint_(e, method) {
-  const params = e.parameter || {};
-  const callback = params.callback || '';
-  const action = params.action || 'health';
-
-  let result;
   try {
-    if (method === 'POST') {
-      result = dispatchPost_(e, action, params);
-    } else {
-      result = dispatchGet_(action, params);
+    const body = parseBody_(e);
+    return jsonOutput_(handleRequest_(body.action, body.payload || {}));
+  } catch (err) {
+    return jsonOutput_(error_('REQUEST_PARSE_ERROR', err.message));
+  }
+}
+
+function handleRequest_(action, payload) {
+  try {
+    switch (action) {
+      case 'health': return base_({ action, status: 'healthy', workbook: SpreadsheetApp.getActive().getName() });
+      case 'setupSheets': return setupSheets_();
+      case 'clearTestRows': return clearTestRows_();
+      case 'writeSampleSasaran': return writeSampleSasaran_();
+      case 'writeSamplePendampingan': return writeSamplePendampingan_();
+      case 'exportSasaranCsv': return exportCsv_('sasaran', normalizeScope_(payload.scope));
+      case 'exportPendampinganCsv': return exportCsv_('pendampingan', normalizeScope_(payload.scope));
+      case 'exportManifest': return exportManifest_(normalizeScope_(payload.scope));
+      case 'runExportSmokeTest': return runExportSmokeTest_(normalizeScope_(payload.scope));
+      case 'snapshotExport': return snapshotExport_(normalizeScope_(payload.scope));
+      default: return error_('UNKNOWN_ACTION', 'Action tidak dikenal: ' + action);
     }
-  } catch (error) {
-    result = makeError_('ENDPOINT_ERROR', error.message || String(error), {
-      action,
-      method,
-      stack: error.stack || '',
-    });
+  } catch (err) {
+    return error_('ACTION_FAILED', err.message, { action });
   }
-
-  result.endpoint_method = method;
-  result.endpoint_action = action;
-
-  if (callback) {
-    return ContentService
-      .createTextOutput(callback + '(' + JSON.stringify(result) + ');')
-      .setMimeType(ContentService.MimeType.JAVASCRIPT);
-  }
-
-  return ContentService
-    .createTextOutput(JSON.stringify(result, null, 2))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-function dispatchGet_(action, params) {
-  switch (action) {
-    case 'health':
-      return getHealth_();
-    case 'setupSheets':
-      return setupSheets_();
-    case 'writeSampleSasaran':
-      setupSheets_();
-      return writeSasaran_(getSampleSasaran_(), { anchorDate: '2026-06-18' });
-    case 'writeSamplePendampingan':
-      setupSheets_();
-      return writePendampingan_(getSamplePendampingan_(), { currentDate: '2026-06-18' });
-    case 'testDuplicateSasaran':
-      setupSheets_();
-      return testDuplicateSasaran_();
-    case 'testDuplicatePendampingan':
-      setupSheets_();
-      return testDuplicatePendampingan_();
-    case 'runSmokeTest':
-      return runSmokeTest_();
-    case 'snapshot':
-      setupSheets_();
-      return getSnapshot_();
-    case 'clearTestRows':
-      setupSheets_();
-      return clearTestRows_();
-    default:
-      return makeError_('ACTION_NOT_FOUND', 'Action tidak dikenal: ' + action, { action });
-  }
-}
-
-function dispatchPost_(e, action, params) {
-  let body = {};
-  if (e.postData && e.postData.contents) {
-    body = JSON.parse(e.postData.contents);
-  }
-
-  switch (action || body.action) {
-    case 'writeSasaran':
-      setupSheets_();
-      return writeSasaran_(body.raw || {}, body.options || {});
-    case 'writePendampingan':
-      setupSheets_();
-      return writePendampingan_(body.raw || {}, body.options || {});
-    case 'multiAction':
-      setupSheets_();
-      return runMultiAction_(body.actions || []);
-    default:
-      return dispatchGet_(action, params);
-  }
-}
-
-function getHealth_() {
-  const ss = getSpreadsheet_();
-  return {
-    ok: true,
-    app_name: TPK_CB5_CONFIG.appName,
-    app_version: TPK_CB5_CONFIG.appVersion,
-    build_package: TPK_CB5_CONFIG.buildPackage,
-    backend_mode: TPK_CB5_CONFIG.backendMode,
-    taxonomy_version: TPK_CB5_CONFIG.taxonomyVersion,
-    domain_version: TPK_CB5_CONFIG.domainVersion,
-    validation_version: TPK_CB5_CONFIG.validationVersion,
-    provider_version: TPK_CB5_CONFIG.providerVersion,
-    hardening_version: TPK_CB5_CONFIG.hardeningVersion,
-    spreadsheet_id: ss.getId(),
-    spreadsheet_name: ss.getName(),
-    sheets_found: Object.keys(TPK_CB5_CONFIG.sheets).reduce(function(acc, key) {
-      const name = TPK_CB5_CONFIG.sheets[key];
-      acc[name] = !!ss.getSheetByName(name);
-      return acc;
-    }, {}),
-  };
 }
 
 function setupSheets_() {
-  const ss = getSpreadsheet_();
-  Object.keys(TPK_CB5_CONFIG.sheets).forEach(function(key) {
-    const name = TPK_CB5_CONFIG.sheets[key];
-    const sheet = getOrCreateSheet_(ss, name);
-    setHeaders_(sheet, TPK_CB5_HEADERS[name]);
-    applyPlainTextFormat_(sheet);
-  });
-
-  upsertMeta_('app_version', TPK_CB5_CONFIG.appVersion);
-  upsertMeta_('provider_version', TPK_CB5_CONFIG.providerVersion);
-  upsertMeta_('taxonomy_version', TPK_CB5_CONFIG.taxonomyVersion);
-  upsertMeta_('validation_version', TPK_CB5_CONFIG.validationVersion);
-  upsertMeta_('hardening_version', TPK_CB5_CONFIG.hardeningVersion);
-
-  return {
-    ok: true,
-    action: 'setupSheets',
-    provider_version: TPK_CB5_CONFIG.providerVersion,
-    sheets: TPK_CB5_CONFIG.sheets,
-  };
-}
-
-function writeSasaran_(raw, options) {
-  options = options || {};
-  const anchorDate = options.anchorDate || raw.anchor_date || raw.tanggal_registrasi || toIsoDate_(new Date());
-  const validation = validateSasaran_(raw, anchorDate);
-
-  if (!validation.ok) {
-    appendAudit_('WRITE_SASARAN_VALIDATION_FAILED', '', '', false, firstErrorCode_(validation), validation);
-    return { ok: false, stage: 'VALIDATION', validation, provider: null };
-  }
-
-  const domain = validation.domain;
-  const sheet = getSheet_(TPK_CB5_CONFIG.sheets.sasaran);
-  const key = domain.sasaran_unique_key;
-
-  if (findRowByKey_(sheet, 'sasaran_unique_key', key) > 0) {
-    const error = makeError_('DUPLICATE_SASARAN_UNIQUE_KEY', 'sasaran_unique_key sudah ada di staging.', { sasaran_unique_key: key });
-    appendAudit_('WRITE_SASARAN_DUPLICATE', key, '', false, error.error.code, error);
-    return { ok: false, stage: 'PROVIDER_ERROR', validation, provider: error };
-  }
-
-  const row = Object.assign({
-    staging_row_id: 'STG_SAS_' + pad4_(Math.max(sheet.getLastRow(), 1)),
-    created_at: new Date().toISOString(),
-  }, domain);
-
-  appendObjectRow_(sheet, TPK_CB5_HEADERS.staging_sasaran, row);
-  appendAudit_('WRITE_SASARAN', key, '', true, '', row);
-
-  return {
-    ok: true,
-    stage: 'PROVIDER_WRITE',
-    action: 'WRITE_SASARAN',
-    validation,
-    provider: makeProviderResult_('WRITE_SASARAN', TPK_CB5_CONFIG.sheets.sasaran, key, row),
-  };
-}
-
-function writePendampingan_(raw, options) {
-  options = options || {};
-  const currentDate = options.currentDate || toIsoDate_(new Date());
-  const parentKeys = getParentSasaranKeys_();
-  const validation = validatePendampingan_(raw, currentDate, parentKeys);
-
-  if (!validation.ok) {
-    appendAudit_('WRITE_PENDAMPINGAN_VALIDATION_FAILED', raw.pendampingan_unique_key || '', raw.sasaran_unique_key || '', false, firstErrorCode_(validation), validation);
-    return { ok: false, stage: 'VALIDATION', validation, provider: null };
-  }
-
-  const domain = validation.domain;
-  const sheet = getSheet_(TPK_CB5_CONFIG.sheets.pendampingan);
-  const key = domain.pendampingan_unique_key;
-
-  if (findRowByKey_(sheet, 'pendampingan_unique_key', key) > 0) {
-    const error = makeError_('DUPLICATE_PENDAMPINGAN_UNIQUE_KEY', 'pendampingan_unique_key sudah ada di staging.', { pendampingan_unique_key: key });
-    appendAudit_('WRITE_PENDAMPINGAN_DUPLICATE', key, domain.sasaran_unique_key, false, error.error.code, error);
-    return { ok: false, stage: 'PROVIDER_ERROR', validation, provider: error };
-  }
-
-  const row = Object.assign({
-    staging_row_id: 'STG_PEN_' + pad4_(Math.max(sheet.getLastRow(), 1)),
-    created_at: new Date().toISOString(),
-  }, domain);
-
-  appendObjectRow_(sheet, TPK_CB5_HEADERS.staging_pendampingan, row);
-  appendAudit_('WRITE_PENDAMPINGAN', key, domain.sasaran_unique_key, true, '', row);
-
-  return {
-    ok: true,
-    stage: 'PROVIDER_WRITE',
-    action: 'WRITE_PENDAMPINGAN',
-    validation,
-    provider: makeProviderResult_('WRITE_PENDAMPINGAN', TPK_CB5_CONFIG.sheets.pendampingan, key, row),
-  };
-}
-
-function validateSasaran_(raw, anchorDate) {
-  const result = newValidationResult_('SasaranValidator', { anchorDate });
-  requireField_(result, raw, 'id_tim');
-  requireField_(result, raw, 'kode_kecamatan');
-  requireField_(result, raw, 'jenis_sasaran');
-  requireField_(result, raw, 'nama_sasaran');
-  requireField_(result, raw, 'nik');
-  requireField_(result, raw, 'no_kk');
-  requireField_(result, raw, 'tanggal_lahir');
-
-  validateNik_(result, raw.nik);
-  validateKk_(result, raw.no_kk);
-  validateNotFuture_(result, raw.tanggal_lahir, anchorDate, 'tanggal_lahir');
-  validateScope_(result, raw);
-  validateJenis_(result, raw.jenis_sasaran);
-
-  if (result.errors.length) return finalizeValidation_(result, null);
-
-  try {
-    const domain = buildSasaranDomain_(raw, anchorDate);
-    return finalizeValidation_(result, domain);
-  } catch (error) {
-    addError_(result, error.code || 'DOMAIN_ERROR', 'domain', error.message, error.details || {});
-    return finalizeValidation_(result, null);
-  }
-}
-
-function validatePendampingan_(raw, currentDate, parentKeys) {
-  const result = newValidationResult_('PendampinganValidator', { currentDate });
-  requireField_(result, raw, 'sasaran_unique_key');
-  requireField_(result, raw, 'id_sasaran');
-  requireField_(result, raw, 'id_tim');
-  requireField_(result, raw, 'kode_kecamatan');
-  requireField_(result, raw, 'jenis_sasaran');
-  requireField_(result, raw, 'tanggal_lahir');
-  requireField_(result, raw, 'tanggal_pendampingan');
-  requireField_(result, raw, 'status_pendampingan');
-
-  validateNotFuture_(result, raw.tanggal_lahir, currentDate, 'tanggal_lahir');
-  validateNotFuture_(result, raw.tanggal_pendampingan, currentDate, 'tanggal_pendampingan');
-  validateScope_(result, raw);
-  validateJenis_(result, raw.jenis_sasaran);
-
-  const parentKey = normalizeText_(raw.sasaran_unique_key);
-  if (parentKey && parentKeys.indexOf(parentKey) < 0) {
-    addError_(result, 'PARENT_SASARAN_NOT_FOUND', 'sasaran_unique_key', 'Parent sasaran tidak ditemukan pada staging_sasaran.', { sasaran_unique_key: parentKey });
-  }
-
-  if (result.errors.length) return finalizeValidation_(result, null);
-
-  try {
-    const domain = buildPendampinganDomain_(raw);
-    return finalizeValidation_(result, domain);
-  } catch (error) {
-    addError_(result, error.code || 'DOMAIN_ERROR', 'domain', error.message, error.details || {});
-    return finalizeValidation_(result, null);
-  }
-}
-
-function buildSasaranDomain_(raw, anchorDate) {
-  const jenis = assertJenis_(raw.jenis_sasaran);
-  const scopeKey = normalizeUpper_(raw.kode_kecamatan) + '|' + normalizeUpper_(raw.id_tim);
-  let ageMonths = null;
-  let kelompok = '';
-  let isBaduta = false;
-
-  if (jenis === 'BALITA') {
-    ageMonths = calculateAgeInMonths_(raw.tanggal_lahir, anchorDate);
-    assertBalitaAge_(ageMonths);
-    kelompok = ageMonths <= 23 ? 'BADUTA_0_23' : 'BALITA_24_59';
-    isBaduta = ageMonths <= 23;
-  }
-
-  return {
-    domain_version: TPK_CB5_CONFIG.domainVersion,
-    record_type: 'SASARAN',
-    sasaran_unique_key: normalizeText_(raw.nik) + '|' + normalizeUpper_(raw.id_tim),
-    id_sasaran: normalizeText_(raw.id_sasaran),
-    id_tim: normalizeUpper_(raw.id_tim),
-    kode_kecamatan: normalizeUpper_(raw.kode_kecamatan),
-    scope_key: scopeKey,
-    jenis_sasaran: jenis,
-    nama_sasaran: normalizeText_(raw.nama_sasaran),
-    nik: normalizeText_(raw.nik),
-    no_kk: normalizeText_(raw.no_kk),
-    tanggal_lahir: normalizeText_(raw.tanggal_lahir),
-    anchor_date: anchorDate,
-    age_months_at_anchor: ageMonths,
-    kelompok_umur_balita: kelompok,
-    is_baduta_prioritas: isBaduta,
-    source: normalizeText_(raw.source || 'GAS_CB4'),
-  };
-}
-
-function buildPendampinganDomain_(raw) {
-  const jenis = assertJenis_(raw.jenis_sasaran);
-  const tanggal = normalizeText_(raw.tanggal_pendampingan);
-  const scopeKey = normalizeUpper_(raw.kode_kecamatan) + '|' + normalizeUpper_(raw.id_tim);
-  let ageMonths = null;
-  let kelompok = '';
-  let isBaduta = false;
-
-  if (jenis === 'BALITA') {
-    ageMonths = calculateAgeInMonths_(raw.tanggal_lahir, tanggal);
-    assertBalitaAge_(ageMonths);
-    kelompok = ageMonths <= 23 ? 'BADUTA_0_23' : 'BALITA_24_59';
-    isBaduta = ageMonths <= 23;
-  }
-
-  const parentKey = normalizeText_(raw.sasaran_unique_key);
-
-  return {
-    domain_version: TPK_CB5_CONFIG.domainVersion,
-    record_type: 'PENDAMPINGAN',
-    pendampingan_unique_key: parentKey + '|' + tanggal,
-    sasaran_unique_key: parentKey,
-    id_sasaran: normalizeText_(raw.id_sasaran),
-    id_tim: normalizeUpper_(raw.id_tim),
-    kode_kecamatan: normalizeUpper_(raw.kode_kecamatan),
-    scope_key: scopeKey,
-    tanggal_pendampingan: tanggal,
-    jenis_sasaran: jenis,
-    age_months_at_pendampingan: ageMonths,
-    kelompok_umur_balita_at_pendampingan: kelompok,
-    is_baduta_prioritas_at_pendampingan: isBaduta,
-    status_pendampingan: normalizeText_(raw.status_pendampingan),
-    source: normalizeText_(raw.source || 'GAS_CB4'),
-  };
-}
-
-function getSnapshot_() {
-  const sasaranSheet = getSheet_(TPK_CB5_CONFIG.sheets.sasaran);
-  const pendampinganSheet = getSheet_(TPK_CB5_CONFIG.sheets.pendampingan);
-  const auditSheet = getSheet_(TPK_CB5_CONFIG.sheets.audit);
-
-  return {
-    ok: true,
-    provider_version: TPK_CB5_CONFIG.providerVersion,
-    sasaran_count: Math.max(0, sasaranSheet.getLastRow() - 1),
-    pendampingan_count: Math.max(0, pendampinganSheet.getLastRow() - 1),
-    audit_count: Math.max(0, auditSheet.getLastRow() - 1),
-    sasaran_preview: readObjects_(sasaranSheet).slice(-5),
-    pendampingan_preview: readObjects_(pendampinganSheet).slice(-5),
-    audit_preview: readObjects_(auditSheet).slice(-10),
-  };
+  const ss = SpreadsheetApp.getActive();
+  Object.keys(CB6_HEADERS).forEach(name => ensureSheet_(ss, name, CB6_HEADERS[name]));
+  upsertMeta_('app_version', CB6_CONFIG.appVersion);
+  upsertMeta_('provider_version', CB6_CONFIG.providerVersion);
+  upsertMeta_('export_version', CB6_CONFIG.exportVersion);
+  return base_({ action: 'setupSheets', sheets_ready: true, sheets: Object.keys(CB6_HEADERS) });
 }
 
 function clearTestRows_() {
-  Object.keys(TPK_CB5_CONFIG.sheets).forEach(function(key) {
-    const name = TPK_CB5_CONFIG.sheets[key];
-    const sheet = getSheet_(name);
-    const headers = TPK_CB5_HEADERS[name];
-    sheet.clearContents();
-    setHeaders_(sheet, headers);
-    applyPlainTextFormat_(sheet);
+  setupSheets_();
+  [CB6_CONFIG.sheets.sasaran, CB6_CONFIG.sheets.pendampingan, CB6_CONFIG.sheets.audit].forEach(name => {
+    const sh = SpreadsheetApp.getActive().getSheetByName(name);
+    const last = sh.getLastRow();
+    if (last > 1) sh.getRange(2, 1, last - 1, sh.getLastColumn()).clearContent();
   });
-  return { ok: true, action: 'clearTestRows' };
+  appendAudit_('clearTestRows', true, '', 'CB-6 test rows cleared', {});
+  return base_({ action: 'clearTestRows', cleared: true });
 }
 
-
-function runSmokeTest_() {
-  const steps = [];
-  steps.push({ action: 'setupSheets', result: setupSheets_() });
-  steps.push({ action: 'clearTestRows', result: clearTestRows_() });
-  steps.push({ action: 'setupSheets_after_clear', result: setupSheets_() });
-  steps.push({ action: 'writeSampleSasaran', result: writeSasaran_(getSampleSasaran_(), { anchorDate: '2026-06-18' }) });
-  steps.push({ action: 'writeSamplePendampingan', result: writePendampingan_(getSamplePendampingan_(), { currentDate: '2026-06-18' }) });
-  steps.push({ action: 'testDuplicateSasaran', result: testDuplicateSasaran_({ keepExisting: true }) });
-  steps.push({ action: 'testDuplicatePendampingan', result: testDuplicatePendampingan_({ keepExisting: true }) });
-  steps.push({ action: 'snapshot', result: getSnapshot_() });
-  const ok = steps.every(function(step) {
-    if (step.action === 'testDuplicateSasaran' || step.action === 'testDuplicatePendampingan') {
-      return step.result && step.result.duplicate_guard_ok === true;
-    }
-    return step.result && step.result.ok === true;
-  });
-  return { ok, action: 'runSmokeTest', provider_version: TPK_CB5_CONFIG.providerVersion, hardening_version: TPK_CB5_CONFIG.hardeningVersion, steps };
-}
-
-function runMultiAction_(actions) {
-  if (!Array.isArray(actions)) {
-    return makeError_('MULTI_ACTION_INVALID', 'actions harus berupa array.', { actions });
-  }
-  const steps = actions.map(function(item) {
-    const action = typeof item === 'string' ? item : item.action;
-    return { action, result: dispatchGet_(action, {}) };
-  });
-  return { ok: steps.every(function(step) { return step.result && step.result.ok === true; }), action: 'multiAction', steps };
-}
-
-function testDuplicateSasaran_(options) {
-  options = options || {};
-  if (!options.keepExisting) {
-    clearTestRows_();
-    setupSheets_();
-  }
-  const first = writeSasaran_(getSampleSasaran_(), { anchorDate: '2026-06-18' });
-  const second = writeSasaran_(getSampleSasaran_(), { anchorDate: '2026-06-18' });
-  const duplicateGuardOk = second && second.ok === false && second.provider && second.provider.error && second.provider.error.code === 'DUPLICATE_SASARAN_UNIQUE_KEY';
-  return { ok: duplicateGuardOk, action: 'testDuplicateSasaran', duplicate_guard_ok: duplicateGuardOk, first, second };
-}
-
-function testDuplicatePendampingan_(options) {
-  options = options || {};
-  if (!options.keepExisting) {
-    clearTestRows_();
-    setupSheets_();
-    writeSasaran_(getSampleSasaran_(), { anchorDate: '2026-06-18' });
-  }
-  if (getParentSasaranKeys_().indexOf('5108010101999999|TIM_TJK_001') < 0) {
-    writeSasaran_(getSampleSasaran_(), { anchorDate: '2026-06-18' });
-  }
-  const first = writePendampingan_(getSamplePendampingan_(), { currentDate: '2026-06-18' });
-  const second = writePendampingan_(getSamplePendampingan_(), { currentDate: '2026-06-18' });
-  const duplicateGuardOk = second && second.ok === false && second.provider && second.provider.error && second.provider.error.code === 'DUPLICATE_PENDAMPINGAN_UNIQUE_KEY';
-  return { ok: duplicateGuardOk, action: 'testDuplicatePendampingan', duplicate_guard_ok: duplicateGuardOk, first, second };
-}
-
-function getSampleSasaran_() {
-  return {
-    id_sasaran: 'SAS_TJK_0001',
-    id_tim: 'TIM_TJK_001',
+function writeSampleSasaran_() {
+  setupSheets_();
+  const row = {
+    record_key: '5108010101999999|TIM_TJK_001',
     kode_kecamatan: 'TJK',
-    jenis_sasaran: 'balita',
-    nama_sasaran: 'CONTOH BALITA 23 BULAN',
+    id_tim: 'TIM_TJK_001',
+    jenis_sasaran: 'BALITA',
     nik: '5108010101999999',
     no_kk: '5108010101888888',
-    tanggal_lahir: '2024-07-18',
-    tanggal_registrasi: '2026-06-18',
-    source: 'GAS_SAMPLE_CB5',
+    nama_sasaran: 'BALITA SAMPLE CB6',
+    tanggal_lahir: '2025-01-10',
+    tanggal_registrasi: '2026-06-19',
+    anchor_date: '2026-06-19',
+    is_baduta_prioritas: true,
+    kelompok_umur_balita: 'BADUTA_0_23',
+    created_at: new Date().toISOString(),
+    source: 'CB6_SAMPLE'
   };
+  const inserted = appendUniqueRow_(CB6_CONFIG.sheets.sasaran, 'record_key', row);
+  appendAudit_('writeSampleSasaran', inserted, row.record_key, inserted ? 'Inserted' : 'Duplicate ignored', row);
+  return base_({ action: 'writeSampleSasaran', inserted, duplicate_guard_ok: !inserted, record_key: row.record_key });
 }
 
-function getSamplePendampingan_() {
-  return {
-    sasaran_unique_key: '5108010101999999|TIM_TJK_001',
-    id_sasaran: 'SAS_TJK_0001',
-    id_tim: 'TIM_TJK_001',
-    kode_kecamatan: 'TJK',
-    jenis_sasaran: 'BALITA',
-    tanggal_lahir: '2024-06-18',
-    tanggal_pendampingan: '2026-06-18',
-    status_pendampingan: 'KUNJUNGAN_RUMAH',
-    source: 'GAS_SAMPLE_CB5',
-  };
-}
-
-function getSpreadsheet_() {
-  if (TPK_CB5_CONFIG.spreadsheetId) {
-    return SpreadsheetApp.openById(TPK_CB5_CONFIG.spreadsheetId);
-  }
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  if (!ss) {
-    throw new Error('Spreadsheet tidak ditemukan. Gunakan bound script atau isi spreadsheetId pada config.');
-  }
-  return ss;
-}
-
-function getOrCreateSheet_(ss, name) {
-  return ss.getSheetByName(name) || ss.insertSheet(name);
-}
-
-function getSheet_(name) {
-  const sheet = getSpreadsheet_().getSheetByName(name);
-  if (!sheet) throw new Error('Sheet belum ada: ' + name + '. Jalankan setupSheets dulu.');
-  return sheet;
-}
-
-function setHeaders_(sheet, headers) {
-  const existing = sheet.getRange(1, 1, 1, headers.length).getValues()[0];
-  const needsHeader = existing.join('') === '' || existing.join('|') !== headers.join('|');
-  if (needsHeader) {
-    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-    sheet.setFrozenRows(1);
-  }
-}
-
-function appendObjectRow_(sheet, headers, object) {
-  const row = headers.map(function(header) {
-    return formatCellValue_(object[header], header);
-  });
-  const nextRow = sheet.getLastRow() + 1;
-  sheet.getRange(nextRow, 1, 1, headers.length).setNumberFormat('@').setValues([row]);
-}
-
-function readObjects_(sheet) {
-  const values = sheet.getDataRange().getValues();
-  if (values.length < 2) return [];
-  const headers = values[0].map(String);
-  return values.slice(1).filter(function(row) {
-    return row.join('') !== '';
-  }).map(function(row) {
-    const obj = {};
-    headers.forEach(function(header, i) {
-      obj[header] = formatCellValue_(row[i], header);
-    });
-    return obj;
-  });
-}
-
-function findRowByKey_(sheet, keyField, keyValue) {
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(String);
-  const index = headers.indexOf(keyField);
-  if (index < 0) throw new Error('Header key tidak ditemukan: ' + keyField);
-  const lastRow = sheet.getLastRow();
-  if (lastRow < 2) return -1;
-  const values = sheet.getRange(2, index + 1, lastRow - 1, 1).getDisplayValues();
-  for (let i = 0; i < values.length; i++) {
-    if (String(values[i][0]) === String(keyValue)) return i + 2;
-  }
-  return -1;
-}
-
-function getParentSasaranKeys_() {
-  const sheet = getSheet_(TPK_CB5_CONFIG.sheets.sasaran);
-  const objects = readObjects_(sheet);
-  return objects.map(function(row) { return String(row.sasaran_unique_key || ''); }).filter(Boolean);
-}
-
-function appendAudit_(action, key, parentKey, ok, errorCode, payload) {
-  const sheet = getSheet_(TPK_CB5_CONFIG.sheets.audit);
+function writeSamplePendampingan_() {
+  setupSheets_();
   const row = {
-    audit_id: 'AUDIT_' + pad4_(Math.max(sheet.getLastRow(), 1)),
-    action,
-    key: key || '',
-    parent_key: parentKey || '',
-    ok: ok ? 'TRUE' : 'FALSE',
-    error_code: errorCode || '',
-    timestamp: new Date().toISOString(),
-    payload_json: JSON.stringify(payload || {}),
+    record_key: '5108010101999999|TIM_TJK_001|2026-06|2026-06-19',
+    sasaran_record_key: '5108010101999999|TIM_TJK_001',
+    kode_kecamatan: 'TJK',
+    id_tim: 'TIM_TJK_001',
+    jenis_sasaran: 'BALITA',
+    nik: '5108010101999999',
+    tanggal_pendampingan: '2026-06-19',
+    periode_laporan: '2026-06',
+    status_pendampingan: 'KUNJUNGAN_RUMAH',
+    is_baduta_prioritas_at_pendampingan: true,
+    kelompok_umur_balita_at_pendampingan: 'BADUTA_0_23',
+    created_at: new Date().toISOString(),
+    source: 'CB6_SAMPLE'
   };
-  appendObjectRow_(sheet, TPK_CB5_HEADERS.staging_audit_log, row);
+  const inserted = appendUniqueRow_(CB6_CONFIG.sheets.pendampingan, 'record_key', row);
+  appendAudit_('writeSamplePendampingan', inserted, row.record_key, inserted ? 'Inserted' : 'Duplicate ignored', row);
+  return base_({ action: 'writeSamplePendampingan', inserted, duplicate_guard_ok: !inserted, record_key: row.record_key });
+}
+
+function exportCsv_(kind, scope) {
+  setupSheets_();
+  const sheetName = kind === 'sasaran' ? CB6_CONFIG.sheets.sasaran : CB6_CONFIG.sheets.pendampingan;
+  const exportBatchId = createExportBatchId_(kind, scope);
+  const dataset = readFilteredDataset_(sheetName, scope);
+  const csvText = buildCsv_(dataset.headers, dataset.rows);
+  const checksum = sha256_(csvText);
+  appendAudit_('export' + titleCase_(kind) + 'Csv', true, exportBatchId, 'CSV exported', { scope, selected_row_count: dataset.rows.length, checksum });
+  return base_({
+    action: kind === 'sasaran' ? 'exportSasaranCsv' : 'exportPendampinganCsv',
+    export_batch_id: exportBatchId,
+    source_workbook: SpreadsheetApp.getActive().getName(),
+    source_sheet: sheetName,
+    export_scope: scope.type,
+    selected_row_count: dataset.rows.length,
+    selected_record_keys: dataset.rows.map(r => String(r.record_key || r.sasaran_record_key || '')).filter(Boolean),
+    checksum,
+    filename: exportBatchId + '_' + kind + '.csv',
+    header: dataset.headers,
+    csv_text: csvText
+  });
+}
+
+function exportManifest_(scope) {
+  setupSheets_();
+  const batchId = createExportBatchId_('manifest', scope);
+  const sasaran = readFilteredDataset_(CB6_CONFIG.sheets.sasaran, scope);
+  const pendampingan = readFilteredDataset_(CB6_CONFIG.sheets.pendampingan, scope);
+  const sasaranCsv = buildCsv_(sasaran.headers, sasaran.rows);
+  const pendampinganCsv = buildCsv_(pendampingan.headers, pendampingan.rows);
+  const selectedRecordKeys = [].concat(
+    sasaran.rows.map(r => String(r.record_key || '')).filter(Boolean),
+    pendampingan.rows.map(r => String(r.record_key || r.sasaran_record_key || '')).filter(Boolean)
+  );
+  const manifest = {
+    export_batch_id: batchId,
+    package_version: CB6_CONFIG.packageVersion,
+    app_version: CB6_CONFIG.appVersion,
+    provider_version: CB6_CONFIG.providerVersion,
+    endpoint_bridge_version: CB6_CONFIG.endpointBridgeVersion,
+    export_version: CB6_CONFIG.exportVersion,
+    taxonomy_version: CB6_CONFIG.taxonomyVersion,
+    validation_version: CB6_CONFIG.validationVersion,
+    hardening_version: CB6_CONFIG.hardeningVersion,
+    source_workbook: SpreadsheetApp.getActive().getName(),
+    source_sheets: [CB6_CONFIG.sheets.sasaran, CB6_CONFIG.sheets.pendampingan],
+    export_scope: scope.type,
+    scope_filter: scope,
+    selected_row_count: sasaran.rows.length + pendampingan.rows.length,
+    selected_record_keys: selectedRecordKeys,
+    generated_at: new Date().toISOString(),
+    checksum: sha256_(sasaranCsv + '\n---CB6_MANIFEST_JOIN---\n' + pendampinganCsv),
+    files: {
+      sasaran: {
+        source_sheet: CB6_CONFIG.sheets.sasaran,
+        filename: batchId + '_sasaran.csv',
+        selected_row_count: sasaran.rows.length,
+        header: sasaran.headers,
+        checksum: sha256_(sasaranCsv)
+      },
+      pendampingan: {
+        source_sheet: CB6_CONFIG.sheets.pendampingan,
+        filename: batchId + '_pendampingan.csv',
+        selected_row_count: pendampingan.rows.length,
+        header: pendampingan.headers,
+        checksum: sha256_(pendampinganCsv)
+      }
+    }
+  };
+  appendAudit_('exportManifest', true, batchId, 'Manifest exported', { scope, checksum: manifest.checksum });
+  return base_({ action: 'exportManifest', manifest, manifest_json: JSON.stringify(manifest, null, 2), filename: batchId + '_manifest.json' });
+}
+
+function runExportSmokeTest_(scope) {
+  setupSheets_();
+  if (readAllRows_(CB6_CONFIG.sheets.sasaran).rows.length === 0) writeSampleSasaran_();
+  if (readAllRows_(CB6_CONFIG.sheets.pendampingan).rows.length === 0) writeSamplePendampingan_();
+  const sasaran = exportCsv_('sasaran', scope);
+  const pendampingan = exportCsv_('pendampingan', scope);
+  const manifest = exportManifest_(scope);
+  const checks = {
+    sasaran_ok: !!sasaran.ok,
+    pendampingan_ok: !!pendampingan.ok,
+    manifest_ok: !!manifest.ok,
+    manifest_has_export_batch_id: !!manifest.manifest.export_batch_id,
+    manifest_has_selected_row_count: Number.isInteger(manifest.manifest.selected_row_count),
+    manifest_has_selected_record_keys: Array.isArray(manifest.manifest.selected_record_keys),
+    manifest_has_checksum: !!manifest.manifest.checksum,
+    csv_header_guard: Array.isArray(sasaran.header) && Array.isArray(pendampingan.header),
+    nik_kk_string_guard: csvKeepsSensitiveNumbers_(sasaran.csv_text),
+    date_format_guard: csvDateFormatGuard_(sasaran.csv_text + '\n' + pendampingan.csv_text)
+  };
+  const smokeOk = Object.keys(checks).every(k => checks[k] === true);
+  appendAudit_('runExportSmokeTest', smokeOk, manifest.manifest.export_batch_id, smokeOk ? 'PASS' : 'FAIL', checks);
+  return base_({ action: 'runExportSmokeTest', smoke_ok: smokeOk, overall: smokeOk ? 'PASS' : 'FAIL', checks });
+}
+
+function snapshotExport_(scope) {
+  setupSheets_();
+  const sasaran = readFilteredDataset_(CB6_CONFIG.sheets.sasaran, scope);
+  const pendampingan = readFilteredDataset_(CB6_CONFIG.sheets.pendampingan, scope);
+  const audit = readAllRows_(CB6_CONFIG.sheets.audit);
+  return base_({
+    action: 'snapshotExport',
+    source_workbook: SpreadsheetApp.getActive().getName(),
+    export_scope: scope.type,
+    sasaran_count: sasaran.rows.length,
+    pendampingan_count: pendampingan.rows.length,
+    audit_count: audit.rows.length,
+    sasaran_headers: sasaran.headers,
+    pendampingan_headers: pendampingan.headers
+  });
+}
+
+function readFilteredDataset_(sheetName, scope) {
+  const data = readAllRows_(sheetName);
+  const rows = data.rows.filter(row => rowMatchesScope_(row, scope));
+  return { headers: data.headers, rows };
+}
+
+function rowMatchesScope_(row, scope) {
+  if (!scope || scope.type === 'ALL') return true;
+  if (scope.type === 'KODE_KECAMATAN') return String(row.kode_kecamatan || '') === String(scope.kode_kecamatan || '');
+  if (scope.type === 'ID_TIM') return String(row.id_tim || '') === String(scope.id_tim || '');
+  if (scope.type === 'RECORD_KEYS') {
+    const keys = scope.selected_record_keys || [];
+    const rk = String(row.record_key || '');
+    const srk = String(row.sasaran_record_key || '');
+    return keys.indexOf(rk) >= 0 || keys.indexOf(srk) >= 0;
+  }
+  return true;
+}
+
+function readAllRows_(sheetName) {
+  const sh = SpreadsheetApp.getActive().getSheetByName(sheetName);
+  if (!sh) return { headers: CB6_HEADERS[sheetName] || [], rows: [] };
+  const lastRow = sh.getLastRow();
+  const lastCol = sh.getLastColumn();
+  if (lastRow < 1 || lastCol < 1) return { headers: CB6_HEADERS[sheetName] || [], rows: [] };
+  const display = sh.getRange(1, 1, lastRow, lastCol).getDisplayValues();
+  const headers = display[0].map(h => String(h).trim()).filter(Boolean);
+  const rows = [];
+  for (let r = 1; r < display.length; r++) {
+    if (display[r].every(v => String(v).trim() === '')) continue;
+    const obj = {};
+    headers.forEach((h, i) => obj[h] = normalizeExportValue_(h, display[r][i]));
+    rows.push(obj);
+  }
+  return { headers, rows };
+}
+
+function buildCsv_(headers, rows) {
+  const stableHeaders = headers && headers.length ? headers : [];
+  const lines = [stableHeaders.map(csvEscape_).join(',')];
+  rows.forEach(row => lines.push(stableHeaders.map(h => csvEscape_(normalizeExportValue_(h, row[h]))).join(',')));
+  return lines.join('\n');
+}
+
+function csvEscape_(value) {
+  const s = String(value == null ? '' : value);
+  return '"' + s.replace(/"/g, '""') + '"';
+}
+
+function normalizeExportValue_(header, value) {
+  if (value == null) return '';
+  let s = String(value).trim();
+  const dateHeaders = ['tanggal_lahir','tanggal_registrasi','anchor_date','tanggal_pendampingan'];
+  if (dateHeaders.indexOf(header) >= 0) return normalizeDateString_(s);
+  const boolHeaders = ['is_baduta_prioritas','is_baduta_prioritas_at_pendampingan'];
+  if (boolHeaders.indexOf(header) >= 0) return normalizeBooleanString_(s);
+  if (header === 'nik' || header === 'no_kk') return s.replace(/[^0-9]/g, '').padStart(16, '0').slice(-16);
+  return s;
+}
+
+function normalizeDateString_(s) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) return Utilities.formatDate(d, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  return s;
+}
+
+function normalizeBooleanString_(s) {
+  const v = String(s).toLowerCase();
+  if (['true','1','ya','yes','y'].indexOf(v) >= 0) return 'true';
+  if (['false','0','tidak','no','n'].indexOf(v) >= 0) return 'false';
+  return s;
+}
+
+function appendUniqueRow_(sheetName, keyHeader, rowObj) {
+  const sh = SpreadsheetApp.getActive().getSheetByName(sheetName);
+  const headers = getHeaders_(sh);
+  const keyIdx = headers.indexOf(keyHeader);
+  if (keyIdx < 0) throw new Error('Key header tidak ditemukan: ' + keyHeader);
+  const key = String(rowObj[keyHeader] || '');
+  if (key && sh.getLastRow() > 1) {
+    const keys = sh.getRange(2, keyIdx + 1, sh.getLastRow() - 1, 1).getDisplayValues().flat().map(String);
+    if (keys.indexOf(key) >= 0) return false;
+  }
+  sh.appendRow(headers.map(h => rowObj[h] == null ? '' : rowObj[h]));
+  return true;
+}
+
+function ensureSheet_(ss, name, headers) {
+  let sh = ss.getSheetByName(name);
+  if (!sh) sh = ss.insertSheet(name);
+  const lastCol = Math.max(sh.getLastColumn(), headers.length);
+  if (sh.getLastRow() === 0 || sh.getRange(1, 1, 1, lastCol).getDisplayValues()[0].every(v => !v)) {
+    sh.getRange(1, 1, 1, headers.length).setValues([headers]);
+  } else {
+    const existing = getHeaders_(sh);
+    headers.forEach(h => {
+      if (existing.indexOf(h) < 0) sh.getRange(1, sh.getLastColumn() + 1).setValue(h);
+    });
+  }
+  sh.setFrozenRows(1);
+  return sh;
+}
+
+function getHeaders_(sh) {
+  if (!sh || sh.getLastColumn() === 0) return [];
+  return sh.getRange(1, 1, 1, sh.getLastColumn()).getDisplayValues()[0].map(h => String(h).trim()).filter(Boolean);
+}
+
+function appendAudit_(action, ok, recordKey, message, payload) {
+  const sh = SpreadsheetApp.getActive().getSheetByName(CB6_CONFIG.sheets.audit);
+  if (!sh) return;
+  sh.appendRow([new Date().toISOString(), action, String(!!ok), recordKey || '', message || '', JSON.stringify(payload || {})]);
 }
 
 function upsertMeta_(key, value) {
-  const sheet = getSheet_(TPK_CB5_CONFIG.sheets.meta);
-  const row = findRowByKey_(sheet, 'key', key);
-  const values = [key, value, new Date().toISOString()];
-  if (row > 0) {
-    sheet.getRange(row, 1, 1, values.length).setValues([values]);
-  } else {
-    sheet.appendRow(values);
-  }
-}
-
-function newValidationResult_(validator, context) {
-  return {
-    ok: true,
-    validation_version: TPK_CB5_CONFIG.validationVersion,
-    context: Object.assign({ validator }, context || {}),
-    error_count: 0,
-    warning_count: 0,
-    errors: [],
-    warnings: [],
-    domain: null,
-  };
-}
-
-function addError_(result, code, field, message, details) {
-  result.ok = false;
-  result.errors.push({ code, field, message, details: details || {} });
-  result.error_count = result.errors.length;
-}
-
-function finalizeValidation_(result, domain) {
-  result.ok = result.errors.length === 0;
-  result.error_count = result.errors.length;
-  result.warning_count = result.warnings.length;
-  result.domain = result.ok ? domain : null;
-  return result;
-}
-
-function requireField_(result, raw, field) {
-  if (raw[field] === undefined || raw[field] === null || String(raw[field]).trim() === '') {
-    addError_(result, 'FIELD_REQUIRED', field, field + ' wajib diisi.', { field });
-  }
-}
-
-function validateNik_(result, value) {
-  if (!/^\d{16}$/.test(normalizeText_(value))) {
-    addError_(result, 'NIK_16_DIGIT_REQUIRED', 'nik', 'NIK wajib 16 digit angka.', { valueLength: normalizeText_(value).length });
-  }
-}
-
-function validateKk_(result, value) {
-  if (!/^\d{16}$/.test(normalizeText_(value))) {
-    addError_(result, 'KK_16_DIGIT_REQUIRED', 'no_kk', 'Nomor KK wajib 16 digit angka.', { valueLength: normalizeText_(value).length });
-  }
-}
-
-function validateNotFuture_(result, value, anchorDate, field) {
-  try {
-    const date = parseIsoDate_(value);
-    const anchor = parseIsoDate_(anchorDate);
-    if (date > anchor) {
-      addError_(result, 'DATE_IN_FUTURE', field, field + ' tidak boleh lebih baru dari anchor date.', { value, anchorIsoDate: anchorDate });
+  const sh = SpreadsheetApp.getActive().getSheetByName(CB6_CONFIG.sheets.meta);
+  if (!sh) return;
+  const data = sh.getDataRange().getDisplayValues();
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === key) {
+      sh.getRange(i + 1, 2, 1, 2).setValues([[value, new Date().toISOString()]]);
+      return;
     }
-  } catch (error) {
-    addError_(result, error.code || 'DATE_FORMAT_INVALID', field, error.message, { value });
   }
+  sh.appendRow([key, value, new Date().toISOString()]);
 }
 
-function validateScope_(result, raw) {
-  const kec = normalizeUpper_(raw.kode_kecamatan);
-  const tim = normalizeUpper_(raw.id_tim);
-  if (TPK_CB5_CONFIG.officialKecamatanCodes.indexOf(kec) < 0) {
-    addError_(result, 'KODE_KECAMATAN_INVALID', 'kode_kecamatan', 'kode_kecamatan tidak terdaftar.', { kode_kecamatan: kec });
-    return;
-  }
-  const registered = TPK_CB5_CONFIG.validTimByKecamatan[kec] || [];
-  if (registered.indexOf(tim) < 0) {
-    addError_(result, 'SCOPE_TIM_NOT_REGISTERED', 'id_tim', 'id_tim tidak terdaftar pada kode_kecamatan tersebut.', { kode_kecamatan: kec, id_tim: tim });
-  }
+function createExportBatchId_(kind, scope) {
+  const tz = Session.getScriptTimeZone();
+  const stamp = Utilities.formatDate(new Date(), tz, 'yyyyMMdd_HHmmss');
+  const suffix = (scope.type === 'KODE_KECAMATAN' && scope.kode_kecamatan) ? scope.kode_kecamatan : (scope.type === 'ID_TIM' && scope.id_tim ? scope.id_tim : scope.type);
+  return ['EXP_CB6', String(kind).toUpperCase(), suffix, stamp].join('_').replace(/[^A-Z0-9_\-]/gi, '_');
 }
 
-function validateJenis_(result, value) {
-  try { assertJenis_(value); }
-  catch (error) { addError_(result, error.code || 'JENIS_SASARAN_INVALID', 'jenis_sasaran', error.message, error.details || {}); }
-}
-
-function assertJenis_(value) {
-  const jenis = normalizeUpper_(value);
-  if (!jenis) throw makeDomainError_('JENIS_SASARAN_REQUIRED', 'jenis_sasaran wajib diisi.', { value });
-  if (jenis === 'BADUTA') throw makeDomainError_('BADUTA_LEGACY_NOT_ALLOWED', 'BADUTA tidak boleh menjadi jenis_sasaran.', { value });
-  if (TPK_CB5_CONFIG.officialJenisSasaran.indexOf(jenis) < 0) {
-    throw makeDomainError_('JENIS_SASARAN_INVALID', 'jenis_sasaran tidak valid: ' + value, { value });
-  }
-  return jenis;
-}
-
-function assertBalitaAge_(ageMonths) {
-  if (ageMonths < 0 || ageMonths > 59) {
-    throw makeDomainError_('BALITA_AGE_OUT_OF_RANGE', 'Umur BALITA harus 0–59 bulan.', { ageMonths });
-  }
-}
-
-function calculateAgeInMonths_(dateOfBirthIso, anchorDateIso) {
-  const dob = parseIsoDate_(dateOfBirthIso);
-  const anchor = parseIsoDate_(anchorDateIso);
-  if (dob > anchor) throw makeDomainError_('DATE_OF_BIRTH_AFTER_ANCHOR', 'Tanggal lahir tidak boleh lebih baru dari anchor date.', { dateOfBirthIso, anchorDateIso });
-  let months = (anchor.getFullYear() - dob.getFullYear()) * 12;
-  months += anchor.getMonth() - dob.getMonth();
-  if (anchor.getDate() < dob.getDate()) months -= 1;
-  return months;
-}
-
-function parseIsoDate_(value) {
-  const text = normalizeText_(value);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) {
-    const err = new Error('Tanggal wajib format YYYY-MM-DD.');
-    err.code = 'DATE_FORMAT_INVALID';
-    throw err;
-  }
-  const parts = text.split('-').map(Number);
-  const date = new Date(parts[0], parts[1] - 1, parts[2]);
-  if (date.getFullYear() !== parts[0] || date.getMonth() !== parts[1] - 1 || date.getDate() !== parts[2]) {
-    const err = new Error('Tanggal kalender tidak valid.');
-    err.code = 'DATE_VALUE_INVALID';
-    throw err;
-  }
-  return date;
-}
-
-function makeProviderResult_(action, table, key, row) {
+function normalizeScope_(scope) {
+  const s = scope || {};
+  const type = ['ALL','KODE_KECAMATAN','ID_TIM','RECORD_KEYS'].indexOf(s.type) >= 0 ? s.type : 'ALL';
   return {
+    type,
+    kode_kecamatan: String(s.kode_kecamatan || '').trim(),
+    id_tim: String(s.id_tim || '').trim(),
+    selected_record_keys: Array.isArray(s.selected_record_keys) ? s.selected_record_keys.map(String).map(v => v.trim()).filter(Boolean) : []
+  };
+}
+
+function sha256_(text) {
+  const raw = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, text, Utilities.Charset.UTF_8);
+  return raw.map(b => (b < 0 ? b + 256 : b).toString(16).padStart(2, '0')).join('');
+}
+
+function csvKeepsSensitiveNumbers_(csv) {
+  return /5108010101999999/.test(csv) && /5108010101888888/.test(csv);
+}
+
+function csvDateFormatGuard_(csv) {
+  return /2025-01-10/.test(csv) && /2026-06-19/.test(csv);
+}
+
+function titleCase_(s) {
+  return String(s).charAt(0).toUpperCase() + String(s).slice(1);
+}
+
+function parseBody_(e) {
+  if (!e || !e.postData || !e.postData.contents) return {};
+  return JSON.parse(e.postData.contents);
+}
+
+function jsonOutput_(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function base_(extra) {
+  return Object.assign({
     ok: true,
-    provider_version: TPK_CB5_CONFIG.providerVersion,
-    provider_mode: TPK_CB5_CONFIG.backendMode,
-    action,
-    table,
-    key,
-    row,
-    error: null,
-  };
+    app_version: CB6_CONFIG.appVersion,
+    package_version: CB6_CONFIG.packageVersion,
+    provider_version: CB6_CONFIG.providerVersion,
+    endpoint_bridge_version: CB6_CONFIG.endpointBridgeVersion,
+    export_version: CB6_CONFIG.exportVersion,
+    taxonomy_version: CB6_CONFIG.taxonomyVersion,
+    validation_version: CB6_CONFIG.validationVersion,
+    hardening_version: CB6_CONFIG.hardeningVersion,
+    backend_mode: CB6_CONFIG.backendMode,
+    real_provider_mode: CB6_CONFIG.realProviderMode,
+    generated_at: new Date().toISOString()
+  }, extra || {});
 }
 
-function makeError_(code, message, details) {
-  return {
-    ok: false,
-    provider_version: TPK_CB5_CONFIG.providerVersion,
-    provider_mode: TPK_CB5_CONFIG.backendMode,
-    error: { code, message, details: details || {} },
-  };
-}
-
-function makeDomainError_(code, message, details) {
-  const err = new Error(message);
-  err.code = code;
-  err.details = details || {};
-  return err;
-}
-
-function firstErrorCode_(validation) {
-  return validation && validation.errors && validation.errors[0] ? validation.errors[0].code : '';
-}
-
-function normalizeText_(value) {
-  return String(value || '').trim();
-}
-
-function normalizeUpper_(value) {
-  return normalizeText_(value).toUpperCase();
-}
-
-
-function applyPlainTextFormat_(sheet) {
-  const maxRows = Math.max(sheet.getMaxRows(), 1000);
-  const maxCols = Math.max(sheet.getMaxColumns(), 26);
-  sheet.getRange(1, 1, maxRows, maxCols).setNumberFormat('@');
-}
-
-function normalizeIsoDateString_(value) {
-  if (value instanceof Date) {
-    return Utilities.formatDate(value, Session.getScriptTimeZone(), 'yyyy-MM-dd');
-  }
-  const text = normalizeText_(value);
-  const isoMatch = text.match(/^(\d{4}-\d{2}-\d{2})/);
-  return isoMatch ? isoMatch[1] : text;
-}
-
-function formatCellValue_(value, header) {
-  if (value instanceof Date) {
-    if (String(header || '').indexOf('tanggal_') === 0 || String(header || '').indexOf('_date') >= 0) {
-      return Utilities.formatDate(value, Session.getScriptTimeZone(), 'yyyy-MM-dd');
-    }
-    return value.toISOString();
-  }
-  if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE';
-  if (value === undefined || value === null) return '';
-  if (String(header || '').indexOf('tanggal_') === 0 || String(header || '').indexOf('_date') >= 0) {
-    return normalizeIsoDateString_(value);
-  }
-  return String(value);
-}
-
-function pad4_(value) {
-  return String(value).padStart(4, '0');
-}
-
-function toIsoDate_(date) {
-  return Utilities.formatDate(date, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+function error_(code, message, extra) {
+  return Object.assign(base_({ ok: false, error_code: code, message }), extra || {});
 }

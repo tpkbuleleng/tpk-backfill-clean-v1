@@ -2,68 +2,99 @@
 <html lang="id">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>TPK Backfill Clean v1 — CB-5</title>
-  <meta name="description" content="TPK Backfill Clean Build v1 — CB-5 Real Sheet Provider Hardening & Multi-Action Write Contract" />
-  <link rel="stylesheet" href="./web/css/app.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TPK Backfill Clean v1 — CB-6 Export CSV & Manifest</title>
+  <link rel="stylesheet" href="web/app.css" />
 </head>
 <body>
-  <main class="shell">
-    <section class="hero">
-      <p class="eyebrow">TPK Backfill Clean Build</p>
-      <h1>CB-5 Real Sheet Provider Hardening & Multi-Action Write Contract</h1>
-      <p class="lead">
-        Regression test tetap berjalan dengan mock provider. Uji real Google Sheet dilakukan melalui GAS Web App endpoint.
-        CB-5 menambahkan hardening tanggal, clear test rows, duplicate guard konsisten, dan multi-action smoke test.
-      </p>
-    </section>
+  <header class="app-header">
+    <div>
+      <p class="eyebrow">TPK Backfill Clean v1</p>
+      <h1>CB-6 — Selective Export CSV & Manifest Builder</h1>
+      <p class="subtitle">Export staging Google Sheet ke CSV stabil + manifest JSON + checksum untuk jembatan import Supabase.</p>
+    </div>
+    <div class="version-card">
+      <strong>App Version</strong>
+      <span id="appVersion">CB-6.0.0</span>
+    </div>
+  </header>
 
+  <main class="layout">
     <section class="card">
-      <h2>Status Aplikasi</h2>
-      <div id="app-status" class="status-grid" aria-live="polite">Memuat health-check...</div>
-    </section>
-
-    <section class="card">
-      <h2>Regression Test CB-5</h2>
-      <div id="test-output" class="test-output" aria-live="polite">Menjalankan test...</div>
-    </section>
-
-    <section class="card">
-      <h2>GAS Web App Endpoint</h2>
-      <p class="muted">
-        Tempel URL Web App Apps Script setelah deploy ulang CB-5. Tombol memakai JSONP GET bridge agar dapat diuji dari GitHub Pages.
-      </p>
-      <div class="endpoint-grid">
-        <label class="field-label" for="gas-endpoint-url">Web App URL</label>
-        <input id="gas-endpoint-url" class="endpoint-input" type="url" placeholder="https://script.google.com/macros/s/.../exec" />
-        <div class="button-row">
-          <button id="btn-save-endpoint" type="button">Simpan URL</button>
-          <button id="btn-gas-health" type="button">Health</button>
-          <button id="btn-gas-setup" type="button">Setup Sheets</button>
-          <button id="btn-gas-clear" type="button">Clear Test Rows</button>
-          <button id="btn-gas-write-sasaran" type="button">Write Sample Sasaran</button>
-          <button id="btn-gas-write-pendampingan" type="button">Write Sample Pendampingan</button>
-          <button id="btn-gas-duplicate-sasaran" type="button">Test Duplicate Sasaran</button>
-          <button id="btn-gas-duplicate-pendampingan" type="button">Test Duplicate Pendampingan</button>
-          <button id="btn-gas-smoke" type="button">Run GAS Smoke</button>
-          <button id="btn-gas-snapshot" type="button">Snapshot</button>
-        </div>
+      <h2>Endpoint & Mode</h2>
+      <label class="field">
+        <span>Apps Script Web App URL</span>
+        <input id="endpointUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec" />
+      </label>
+      <div class="toolbar">
+        <button id="saveEndpointBtn">Simpan Endpoint</button>
+        <button id="healthBtn" class="secondary">Health GAS</button>
+        <button id="mockBtn" class="secondary">Mode Mock: ON</button>
       </div>
-      <pre id="gas-endpoint-output" class="code-block">Endpoint belum diuji.</pre>
+      <p class="hint">Mode mock dipakai untuk regression test di GitHub Pages tanpa backend. Matikan mock untuk uji real endpoint GAS.</p>
     </section>
 
     <section class="card">
-      <h2>Sample Mock Staging Writer</h2>
-      <p class="muted">Contoh penulisan sasaran dan pendampingan ke mock staging setelah lulus validasi.</p>
-      <pre id="staging-sample" class="code-block">Memuat sample...</pre>
+      <h2>Scope Export</h2>
+      <div class="grid-2">
+        <label class="field">
+          <span>Export Scope</span>
+          <select id="exportScope">
+            <option value="ALL">ALL_STAGING</option>
+            <option value="KODE_KECAMATAN">KODE_KECAMATAN</option>
+            <option value="ID_TIM">ID_TIM</option>
+            <option value="RECORD_KEYS">SELECTED_RECORD_KEYS</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Kode Kecamatan</span>
+          <input id="kodeKecamatan" value="TJK" maxlength="8" />
+        </label>
+        <label class="field">
+          <span>ID Tim</span>
+          <input id="idTim" value="TIM_TJK_001" />
+        </label>
+        <label class="field">
+          <span>Selected Record Keys</span>
+          <textarea id="recordKeys" rows="4" placeholder="1 key per baris atau pisahkan koma"></textarea>
+        </label>
+      </div>
     </section>
 
     <section class="card">
-      <h2>Sample Mock Provider Snapshot</h2>
-      <p class="muted">Snapshot staging mock: sasaran, pendampingan, dan audit log.</p>
-      <pre id="provider-snapshot" class="code-block">Memuat snapshot...</pre>
+      <h2>Setup & Sample Data</h2>
+      <div class="toolbar wrap">
+        <button id="setupSheetsBtn" class="secondary">Setup Sheets</button>
+        <button id="clearTestRowsBtn" class="danger">Clear Test Rows</button>
+        <button id="writeSampleSasaranBtn" class="secondary">Write Sample Sasaran</button>
+        <button id="writeSamplePendampinganBtn" class="secondary">Write Sample Pendampingan</button>
+      </div>
+    </section>
+
+    <section class="card accent">
+      <h2>Panel Uji CB-6</h2>
+      <div class="toolbar wrap">
+        <button id="exportSasaranBtn">Export Sasaran CSV</button>
+        <button id="exportPendampinganBtn">Export Pendampingan CSV</button>
+        <button id="exportManifestBtn">Export Manifest</button>
+        <button id="smokeBtn">Run Export Smoke Test</button>
+        <button id="snapshotBtn" class="secondary">Snapshot Export</button>
+        <button id="regressionBtn" class="secondary">Regression Test CB-6</button>
+      </div>
+    </section>
+
+    <section class="card output-card">
+      <div class="output-head">
+        <h2>Output</h2>
+        <button id="clearOutputBtn" class="secondary small">Bersihkan</button>
+      </div>
+      <pre id="output">Siap uji CB-6.</pre>
     </section>
   </main>
-  <script type="module" src="./web/js/app.js"></script>
+
+  <script src="web/cb6-contract.js"></script>
+  <script src="web/mock-provider.js"></script>
+  <script src="web/gas-provider.js"></script>
+  <script src="web/app.js"></script>
 </body>
 </html>

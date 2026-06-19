@@ -1,0 +1,9 @@
+{
+  "name": "tpk-backfill-clean-v1-cb6",
+  "version": "6.0.0",
+  "private": true,
+  "description": "CB-6 Selective Export CSV & Manifest Builder for TPK Backfill Clean v1",
+  "scripts": {
+    "serve": "python -m http.server 8080"
+  }
+}
